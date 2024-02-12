@@ -37,7 +37,7 @@ spreads: update dateTime: priceX[`dateTime], spread: s1, mean: mean ,up: mean+1.
 .streamPair.priceX: 1000#tAux;
 .streamPair.priceY: 1000#tAux;
 .streamPair.spreads: 1000#tab3;
-//.streamPair.spreads: update spread:0 from .streamPair.spreads;
+
 // Timer function
 timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
 
