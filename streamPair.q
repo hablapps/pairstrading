@@ -1,41 +1,27 @@
+// import linear regression module
+\l C:/q/dash/sample/linear_regression.q
+
 // load tables
 tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USA500IDXUSD.csv;
 tab2: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USATECHIDXUSD.csv;
-//tab1: 1_ flip `dateTime`bid`ask`bidVol`askVol`Vol!("DFFFFF";",") 0: `:C:/q/dash/sample/data/stocks/EWA2.csv;
-//tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol`Vol!("DFFFFF";",") 0: `:C:/q/dash/sample/data/stocks/EWC2.csv;
 tab3: flip `dateTime`spread`mean`up`low`operation!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
 
-
-// Fix Time
-update dateTime:"P"$@[;19;:;"."] each dateTime from `tab1;
-update dateTime:"P"$@[;19;:;"."] each dateTime from `tab2;
-
-// Take date and log(prices)
-priceX: distinct select distinct dateTime, log bid, log ask from tab1;
-priceY: distinct select distinct dateTime, log bid, log ask from tab2;
+// Fix data and take log(prices)
+priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab1);
+priceY: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab2);
 spreads: 200#select from tab3;
-
-// Eliminate nulls and filter data
-update delta:0f^deltas dateTime from `priceX;
-update delta:0f^deltas dateTime from `priceY;
-priceX: 0!1_priceX;
-priceY: 0!1_priceY;
 
 // Create an empty auxiliary table
 tAux: 1_1#priceX;
 profit: 0;
 
-// Alpha and beta functions
-betaF:{dot:{sum x*y};                                      
-      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
-      ((n:count[x])*dot[x;x])-sum[x]xexp 2};
-alphaF: {avg[y]-(betaF[x;y]*avg[x])};
-
 // Calculate alpha y beta and spreads
 px: exec bid from priceX;
 py: exec bid from priceY;
-s1: py - ((px * beta[px;py])-alpha[px;py]);
-spreads: update dateTime: priceX[`dateTime], spread: s1, mean: avg[100#s1] ,up: avg[100#s1]+1.96*dev[100#s1], low: avg[100#s1]-1.96*dev[100#s1] , operation:0 from spreads;
+s1: py - ((px * betaF[px;py])-alphaF[px;py]);
+mean: avg[100#s1];
+std: dev[100#s1];
+spreads: update dateTime: priceX[`dateTime], spread: s1, mean: mean ,up: mean+1.96*std, low: mean-1.96*std , operation:0 from spreads;
 
 / load and initialize kdb+tick 
 / all tables in the top level namespace (.) become publish-able
@@ -53,7 +39,7 @@ spreads: update dateTime: priceX[`dateTime], spread: s1, mean: avg[100#s1] ,up: 
 .streamPair.spreads: 1000#tab3;
 //.streamPair.spreads: update spread:0 from .streamPair.spreads;
 // Timer function
-timer:{t:.z.p;while[.z.p<t+x&abs x-10*10 xexp 6]} 
+timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
 
 .streamPair.genPair:{
       // We wait some delta
