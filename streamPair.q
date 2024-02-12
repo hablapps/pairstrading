@@ -1,9 +1,9 @@
 // import linear regression module
-\l C:/q/dash/sample/linear_regression.q
+\l `:data/linear_regression.q
 
 // load tables
-tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USA500IDXUSD.csv;
-tab2: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USATECHIDXUSD.csv;
+tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
+tab2: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USATECHIDXUSD.csv;
 tab3: flip `dateTime`spread`mean`up`low`operation!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
 
 // Fix data and take log(prices)
@@ -25,7 +25,7 @@ spreads: update dateTime: priceX[`dateTime], spread: s1, mean: mean ,up: mean+1.
 
 / load and initialize kdb+tick 
 / all tables in the top level namespace (.) become publish-able
-\l C:/q/dash/sample/tick/u.q
+\l `:tick/u.q
 .u.init[];
 
 // Read and write on buffer functions
