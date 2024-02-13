@@ -1,5 +1,5 @@
 // import linear regression module
-\l `:data/linear_regression.q
+\l `:linear_regression.q
 
 // load tables
 tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
