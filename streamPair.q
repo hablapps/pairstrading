@@ -19,9 +19,7 @@ tAux: 1_1#priceX;
 profit: 0;
 
 // Calculate alpha and beta from historical values
-px: exec close from historial_tab1;
-py: exec close from historial_tab2;
-beta: betaF[px;py];
+beta: betaF[px:historial_tab1`close;py:historial_tab2`close];
 alpha: alphaF[px;py];
 
 / load and initialize kdb+tick 
