@@ -1,13 +1,13 @@
 // import linear regression module
-\l C:/q/dash/sample/linear_regression.q
-\l C:/q/dash/sample/kalman_filter.q
+\l linear_regression.q
+\l kalman_filter.q
 
 // load tables
-tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USA500IDXUSD.csv;
-tab2: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:C:/q/dash/sample/data/stocks/USATECHIDXUSD.csv;
+tab1: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
+tab2: 40000#1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:dataUSATECHIDXUSD.csv;
 tab3: flip `dateTime`spread`mean`up`low`operation!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
-historial_tab1: 40000#1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:C:/q/dash/sample/data/stocks/NASDAQ100_hist.csv;
-historial_tab2: 40000#1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:C:/q/dash/sample/data/stocks/SP500_hist.csv;
+historial_tab1: 40000#1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
+historial_tab2: 40000#1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
 
 // Fix data and take log(prices)
 priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab1);
@@ -27,7 +27,7 @@ alpha: alphaF[px;py];
 
 / load and initialize kdb+tick 
 / all tables in the top level namespace (.) become publish-able
-\l C:/q/dash/sample/tick/u.q
+\l tick/u.q
 .u.init[];
 
 // Read and write on buffer functions
