@@ -50,7 +50,7 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
 
       // We calculate spreads for linear regression
       // WE SHOULD IMPLEMENT HERE RATIO OF RETURN SO WE CAN CALCULATE EWMA
-      s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr); // I NEED TO CALCULATE BETA AND ALPHA AGAIN I THINK IT HAS TO DO WITH THE LOCAL SCOPE MINOR DETAIL
+      s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr); 
       resSpread: enlist `dateTime`spread`mean`up`low`operation!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(0);"f"$(0);"f"$(0)); // MEAN AND STD FROM streamPair.i#.streamPair.spreads ? 
 
       // We update our buffer tables with those values
