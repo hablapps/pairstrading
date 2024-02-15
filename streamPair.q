@@ -3,10 +3,10 @@
 
 // load tables
 tab1: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
-tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:dataUSATECHIDXUSD.csv;
+tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USATECHIDXUSD.csv;
 tab3: flip `dateTime`spread`mean`up`low`operation!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
-historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
-historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
+historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
+historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
 
 // Fix data and take log(prices)
 priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab1);
@@ -19,8 +19,8 @@ tAux: 1_1#priceX;
 profit: 0;
 
 // Calculate alpha and beta from historical values
-beta: betaF[px:historial_tab1`close;py:historial_tab2`close];
-alpha: alphaF[px;py];
+beta_lr: betaF[px:-100#log historial_tab1`close;py:-100#log historial_tab2`close]; // we only take most recent 100 values for the alpha and beta 
+alpha_lr: alphaF[px;py];
 
 / load and initialize kdb+tick 
 / all tables in the top level namespace (.) become publish-able
@@ -50,7 +50,7 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
 
       // We calculate spreads for linear regression
       // WE SHOULD IMPLEMENT HERE RATIO OF RETURN SO WE CAN CALCULATE EWMA
-      s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * betaF[px;py])-alphaF[px;py]); // I NEED TO CALCULATE BETA AND ALPHA AGAIN I THINK IT HAS TO DO WITH THE LOCAL SCOPE MINOR DETAIL
+      s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr); // I NEED TO CALCULATE BETA AND ALPHA AGAIN I THINK IT HAS TO DO WITH THE LOCAL SCOPE MINOR DETAIL
       resSpread: enlist `dateTime`spread`mean`up`low`operation!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(0);"f"$(0);"f"$(0)); // MEAN AND STD FROM streamPair.i#.streamPair.spreads ? 
 
       // We update our buffer tables with those values
@@ -62,7 +62,7 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
  }
 
 // Publish stream updates each milisecond
-.z.ts: {u.pub[`tAux; .streamPair.genPair[]]} 
+.z.ts: {.streamPair.genPair[]]} 
 
 // Snapshot read from our buffer
 .u.snap:{[t] .ringBuffer.read[.streamPair.priceX;.streamPair.i]} // reqd. by dashboards
