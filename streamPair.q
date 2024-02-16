@@ -51,7 +51,6 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
       resY: enlist priceY[.streamPair.i];
 
       // We calculate spreads for linear regression
-      if[.streamPair.iEWMA = 999 ; .streamPair.iEWMA: 0];
       s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
       ewma: $[.streamPair.i<=0;0f;(s - .streamPair.spreads[.streamPair.iEWMA-1][`spread]) % .streamPair.spreads[.streamPair.iEWMA-1][`spread]];
       .streamPair.iEWMA+:1;
