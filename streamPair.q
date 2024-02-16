@@ -4,7 +4,7 @@
 // load tables
 tab1: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
 tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USATECHIDXUSD.csv;
-tab3: flip `dateTime`spread`mean`up`low`operation!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
+tab3: flip `dateTime`spread`mean`up`low`ewma!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
 historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
 historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
 
@@ -55,7 +55,7 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
       s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
       ewma: $[.streamPair.i<=0;0f;(s - .streamPair.spreads[.streamPair.iEWMA-1][`spread]) % .streamPair.spreads[.streamPair.iEWMA-1][`spread]];
       .streamPair.iEWMA+:1;
-      resSpread: enlist `dateTime`spread`mean`up`low`operation!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(1.96*std_lr);"f"$(-1.96*std_lr);"f"$0f^(0.06*ewma + 0.94*.streamPair.spreads[.streamPair.iEWMA-1][`operation])); 
+      resSpread: enlist `dateTime`spread`mean`up`low`ewma!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(1.96*std_lr);"f"$(-1.96*std_lr);"f"$0f^(0.06*ewma + 0.94*.streamPair.spreads[.streamPair.iEWMA-1][`ewma])); 
      
       // We update our buffer tables with those values
       .ringBuffer.write[`.streamPair.priceX;resX;.streamPair.i];
