@@ -53,6 +53,7 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
       // We calculate spreads for linear regression
       s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
       ewma: $[.streamPair.i<=0;0f;(s - .streamPair.spreads[.streamPair.iEWMA-1][`spread]) % .streamPair.spreads[.streamPair.iEWMA-1][`spread]];
+      // ONCE IT SURPASSES 1000 ELEMS IT IS USELESS MAYBE USE `if[.streamPair.iEWMA = 999f ; .streamPair.iEWMA: 0f];` ¿?
       .streamPair.iEWMA+:1;
       resSpread: enlist `dateTime`spread`mean`up`low`ewma!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(1.96*std_lr);"f"$(-1.96*std_lr);"f"$0f^(sqrt[0.06*(ewma xexp 2) + 0.94*(.streamPair.spreads[.streamPair.iEWMA-1][`ewma] xexp 2)])); 
      
