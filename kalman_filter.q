@@ -38,5 +38,5 @@ kalmanFilter:{[x;y;delta;estimates; covariances]
     At: ((Rt mmu transpose[Ft]) mmu 1%Qt); // A_t = R_t * F_t * inv(Q_t) (EQ 7)
     mt: (At *\: et) + alphat; // m_t = a_t + A_t * e_t (EQ 4)
     Ct: (eye[2] - (At mmu Ft)) mmu Rt; // C_t = R_t - A_t * Q_t * T(A_t) (EQ 8)
-    (mt;Ct)}  // Return new updates
+    (mt;-1*Ct)}  // Return new updates
 
