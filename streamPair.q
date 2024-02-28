@@ -4,7 +4,7 @@
 // load tables
 tab1: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
 tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USATECHIDXUSD.csv;
-tab3: flip `dateTime`spread`mean`up`low`ewma!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$());
+tab3: flip `dateTime`spread`mean`up`low`ewma`up2`low2!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$());
 historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
 historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
 
@@ -52,10 +52,9 @@ timer:{t:.z.p;while[.z.p<t+x&abs x-16*1e6]}    / 16 <- timer variable
 
       // We calculate spreads for linear regression
       s: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
-      ewma: $[.streamPair.i<=0;0f;(s - .streamPair.spreads[.streamPair.iEWMA-1][`spread]) % .streamPair.spreads[.streamPair.iEWMA-1][`spread]];
-      // ONCE IT SURPASSES 1000 ELEMS IT IS USELESS MAYBE USE `if[.streamPair.iEWMA = 999f ; .streamPair.iEWMA: 0f];` ¿?
-      .streamPair.iEWMA+:1;
-      resSpread: enlist `dateTime`spread`mean`up`low`ewma!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(1.96*std_lr);"f"$(-1.96*std_lr);"f"$0f^(sqrt[0.06*(ewma xexp 2) + 0.94*(.streamPair.spreads[.streamPair.iEWMA-1][`ewma] xexp 2)])); 
+      ewma: dev[ema[0.04; .streamPair.iEWMA#0f^(exec spread from .streamPair.spreads)]];
+      $[.streamPair.iEWMA>999;.streamPair.iEWMA:998;.streamPair.iEWMA+:1];
+      resSpread: enlist `dateTime`spread`mean`up`low`ewma`up2`low2!("p"$(priceX[.streamPair.i][`dateTime]);"f"$(s);"f"$(0);"f"$(1.96*std_lr);"f"$(-1.96*std_lr);"f"$0f^(ewma); "f"$(0f^(1.96*(last 1000 mdev (exec spread from .streamPair.spreads)))); "f"$0f^(-1.96*(last 1000 mdev (exec spread from .streamPair.spreads))));  
      
       // We update our buffer tables with those values
       .ringBuffer.write[`.streamPair.priceX;resX;.streamPair.i];
