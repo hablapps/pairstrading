@@ -14,7 +14,7 @@ std_lr: dev[(1000#exec bid from priceY) - (1000#exec bid from priceX)];
 
 updPairs: {[t;d]
     // calculate spreads
-    s: d[1][`bid] - ((d[0][`bid] * beta_lr)+alpha_lr);
+    s: d[1][2] - ((d[0][2] * beta_lr)+alpha_lr);
     // Update table
     d: update spread: s, up: 1.96*std_lr, low: -1.96*std_lr from d;
     // insert on trade table
