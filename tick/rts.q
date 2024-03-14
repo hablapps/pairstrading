@@ -1,8 +1,10 @@
 /q tick/r.q [host]:port[:usr:pwd] [host]:port[:usr:pwd]
 /2008.09.09 .k ->.q
+\l ../linear_regression.q
 
 if[not "w"=first string .z.o;system "sleep 1"];
 
+// It should use the gateway + hdb 
 historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
 historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
 
