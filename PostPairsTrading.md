@@ -1,4 +1,4 @@
-# A match made in trading: A step by step Pairs Trading guide
+# A Match Made in Trading: Step by Step Pairs Trading Guide
 
 Q/kdb+ stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of pair trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
 
