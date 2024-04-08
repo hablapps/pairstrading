@@ -8,9 +8,9 @@ We'll proceed methodically, ensuring each question leads to a comprehensive answ
 
 ## In the untamed realm of the market.
 
-The market has often been described as a stochastic (a term which essentially means random) process where prices fluctuate irregularly. However, amidst this apparent randomness, we observe that certain assets move in tandem due to their inherent relationships. For instance, it's logical to expect that if the prices of petrol rise, the prices of cars should also rise. This is because auto companies rely on petrol for their operations, indicating an interconnectedness between the two. Over the long run, they tend to follow similar trends, reflecting their underlying relationship.
+The market has often been described as a **stochastic** (a term which essentially means random) **process** where prices fluctuate irregularly. However, amidst this apparent randomness, we observe that **certain assets move in tandem** due to their inherent relationships. For instance, it's logical to expect that if the prices of petrol rise, the prices of cars should also rise. This is because auto companies rely on petrol for their operations, indicating an interconnectedness between the two. Over the long run, they tend to follow similar trends, reflecting their underlying relationship.
 
-Is this described mathematically? Yes.
+Is this described mathematically? **Yes**:
 
 The concept we're referring to is **cointegration** (although there are other methods, we'll focus on this one).
 
@@ -21,3 +21,13 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 2. This inherent relationship persists in the long run, meaning that our series is not dependent on time.
 
 ## A pair in the hand is worth two in the bush.
+
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test.
+
+[INSERT CODE HERE]
+
+![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/tfg18.png?raw=true)
+
+As we may see, there are many cointegrated indices, but we will focus on NASDAQ100 and SP500 synergie.
+
+
