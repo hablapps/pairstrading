@@ -11,11 +11,6 @@ historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:da
 // Fix data and take log(prices)
 priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab1);
 priceY: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab2);
-spreads: select from tab3;
-
-// Create an empty auxiliary table
-tAux: 1_1#priceX;
-profit: 0;
 
 // Calculate alpha and beta from historical values
 beta_lr: betaF[px:-100#log historial_tab1`close;py:-100#log historial_tab2`close]; // we only take most recent 100 values for the alpha and beta 
@@ -35,7 +30,7 @@ std_lr: dev[(1000#exec bid from priceY) - (1000#exec bid from priceX)];
 // Initialize index and empty tables (We will access directly to these objects from dashboards)
 .streamPair.i:-1;
 .streamPair.iEWMA:-1;
-.streamPair.priceX: 1000#tAux;
+.streamPair.priceX: 1000#tAux: 1_1#priceX;
 .streamPair.priceY: 1000#tAux;
 .streamPair.spreads: 1000#tab3;
 
