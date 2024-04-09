@@ -22,12 +22,15 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 ## A pair in the hand is worth two in the bush.
 
+### ADF testing
+
 Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test.
 
 [INSERT CODE HERE]
 
 ![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/tfg18.png?raw=true)
 
-As we may see, there are many cointegrated indices, but we will focus on NASDAQ100 and SP500 synergie.
+As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy.
 
+Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same market.
 
