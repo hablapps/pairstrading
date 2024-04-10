@@ -49,7 +49,12 @@ q)
 
 ---
 
-Now, with our matrix in hand, we can plot it and visually identify which asset is more favorable.
+Now, with our matrix in hand, we can plot it and visually identify which asset is more favorable. Given our following assets:
+
+
+|   SP500   | NASDAQ100 |   BFX    |   FCHI   |  GDAXI   |   HSI    |   KS11   |   MXX    |   N100   |   N225   |   NYA    |   RUT    |  STOXX   |
+|:---------:|:---------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
+|   USA     |   USA     | Belgium  |  France  | Germany  | Hong Kong|S.Korea   |  Mexico  |  Europe  |  Japan   |   USA    |   USA    |  Europe  |
 
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/ADFgif.gif?raw=true)
 
@@ -75,53 +80,65 @@ However, this presents **an opportunity for profit** because we know that these 
 
 ## Spreading spreads
 
-Indeed, just subtracting the prices of two assets, as in:
-
-$priceY−priceX$
-
-may not provide a clear understanding of their relationship. Let's illustrate this with an example:
+Indeed, just subtracting the prices of two assets, as in: $priceY−priceX$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
 Consider the following series:
 
-priceX: 5 10 7 4 8
+---
 
-priceY: 23 30 25 30 35
+$priceX$: 5 10 7 4 8
 
-spreads: priceY - priceX = 18 20 18 26 27
+$priceY$: 23 30 25 30 35
 
-These spread values don't offer much insight into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
+$spreads: priceY - priceX$ = 18 20 18 26 27
 
-So let's try using logarithms, they have good properties for our prices, as they cannot be negative and they are close to 0:
+---
 
-log priceX: 1.609438 2.302585 1.94591 1.386294 2.079442
+〽 These spread values don't offer much insight into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
-log priceY: 3.135494 3.401197 3.218876 3.401197 3.555348
+Let's consider using logarithms, as they possess favorable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
 
-spreads: priceY - priceX = 1.526056 1.098612 1.272966 2.014903 1.475907
+--- 
 
-... We are getting there, as we see numbers now wander around much more smaller numbers, but we still lack a vision of the inner relationship, we normalized it with our logarithims, but now we need to adjust its difference to just one asset, as both are related, we can use linear regression, one asset explains another, and we can use this to our advantage so that we can simplify our spreads like:
+$log priceX$: 1.609438 2.302585 1.94591 1.386294 2.079442
 
-Se we can just do a basic linear regression (based on historical data) and see the difference between them:
+$log priceY$: 3.135494 3.401197 3.218876 3.401197 3.555348
 
-$spread = log(priceY) - (beta * log(priceX)+alpha)$
+$spreads: log priceY - log priceX$ = 1.526056 1.098612 1.272966 2.014903 1.475907
 
-Lets exemplify this:
+---
 
-historical_data_priceX: 7 10 6 5 8
+We're making progress, as we observe numbers now fluctuating within much smaller ranges. However, we're still missing a clear understanding of the underlying relationship. While we've normalized the data using logarithms, we now need to align their discrepancies to a single asset. 
 
-historical_data_priceY: 23 25 16 20 15
+Since both assets are related, we can leverage linear regression to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them:
 
-beta = 0.2679227
-alpha = 2.444817
+--- 
 
-spreads = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
+$FORMULA: spread = log(priceY) - (beta * log(priceX)+alpha)$
 
-And this is exactly what we are looking for, a comprenhensive way of representing relative changes bteween both assets, just as we can deduce, our mean now is 0, becasuse our assets are cointegrated, so idically the diferential between its prices should be 0, so when our spread is below 0 we know that asset X is overpriced, whereas if its over 0 then its asset Y the overpriced one.
+$historical/data/priceX$: 7 10 6 5 8
 
-And this is clear when we see the differences between them:
+$historical/data/priceY$: 23 25 16 20 15
 
-priceX: 5 10 7 4 8
+$beta$ = 0.2679227
 
-priceY: 23 30 25 30 35
+$alpha$ = 2.444817
+
+---
+
+We've already calculated the alpha and beta using the logarithmic values of our historical data (since we don't have prior knowledge of the real-time price values for priceX and priceY). Now, all that remains is to apply the previous formula to derive our spreads:
+
+---
+
+$spreads$ = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
+
+---
+
+And this precisely meets our objective—a comprehensive method for representing relative changes between both assets. As we can deduce, our mean is now 0 because our assets are normalized and cointegrated. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
+
+![Spreads](https://github.com/hablapps/pairstrading/blob/5-Post/Spreads.gif?raw=true)
+
+
+
 
 
