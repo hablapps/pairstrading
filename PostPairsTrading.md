@@ -18,7 +18,7 @@ Is this described mathematically? **Yes**:
 
 The concept we're referring to is **cointegration** (although there are other methods, we'll focus on this one).
 
-// añadir diferencia entre correlacion y cointegracion
+> 💡 Which should not be confused with correlation; cointegration is a statistical property of two time series, indicating a long-term relationship between them despite short-term fluctuations. Cointegrated series move together over time, sharing a common stochastic drift. On the other hand, correlation measures the strength and direction of the linear relationship between two variables at a specific point in time. While correlation captures the degree of association between variables, cointegration reflects a deeper, underlying relationship that persists over time.
 
 Hence, we're interested in **cointegrated assets**, which are assets that exhibit the following characteristics:
 
