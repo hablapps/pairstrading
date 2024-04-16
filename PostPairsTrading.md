@@ -38,20 +38,43 @@ Imagine **we selected 13 world indexes** and aimed to assess whether they are **
 
 Next, we import the statsmodels.tsa.stattools library and define a custom cointegration function that returns a dictionary with the ADF test results given 2 assets. **We then apply our cointegration function to the Cartesian product of every pair of assets** to get a matrix with every p-value. 
 
+---
+
 ![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/CointAlGif.gif?raw=true)
 
 ---
 
 ```q
-// Recieves 2 symbols and returns a dictionary
+// We import the cointegration function from statsmodels library in python
+coint:.pykx.import[`statsmodels.tsa.stattools]`:coint; 
 
-fCoint {[assetX;assetY;]
-        ... }
+// Recieves 2 symbols and returns a dictionary
+fCoint: {p1:0f^(exec close from superTab where sym=x); // AssetX
+        p2: 0f^(exec close from superTab where sym=y); // AssetY
+        r: 0f^coint[p1;p2]`; // Coint results
+        `pair`score`pvalue`porcentages!(enlist (x,y);r[0];r[1];enlist r[2])}; // Get every result into a dictionary
+
+// We extract every distinct symbol
+symList: exec distinct sym from superTab;
 
 crossedList: symList cross symList
 
 matrix: fCoint .' crossedList;
 ```
+
+### Code explanation
+
+1. The `coint` function **is imported from statsmodels**, thanks to the pykx library, which provides a cointegration tool in Python. This variable transforms every input data into its Python equivalent, facilitating the calculation of cointegration results.
+
+2. We then proceed to **create our custom cointegration function** called `fCoint`, which retrieves both asset prices from our table based on the input symbols. Subsequently, it utilizes the previously imported coint function to obtain the results and inserts them into a dictionary. (`symbol1symbol2...!(;v1;v2;...)`)
+
+3. We use QSQL to **extract every distinct symbol** from our table with the keyword [`exec`](https://code.kx.com/q/ref/exec/).
+
+> 💡[QSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in Q/kdb+. Which makes it pretty accesible for newcomers to this language.
+
+4. We utilize the `cross` operator, which conducts a [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) on every symbol, **generating all possible pair combinations**.
+
+5. Finally, **we apply our function from step 2 to our list of every pair of symbols from step 4**. We can achive this by using the [apply operator](https://code.kx.com/q/ref/apply/) (`.`) follow by an [`each`](https://code.kx.com/q/ref/maps/#each) (`'`). So that we apply our function (`fCoint .' `) to each and every pair (`crossedList`)
 
 ---
 
@@ -115,7 +138,7 @@ log priceX = 1.609438 2.302585 1.94591 1.386294 2.079442
 
 log priceY = 3.135494 3.401197 3.218876 3.401197 3.555348
 
-spreads: log priceY - log priceX // = 1.526056 1.098612 1.272966 2.014903 1.475907
+spreads: log[priceY] - log priceX // = 1.526056 1.098612 1.272966 2.014903 1.475907
 ```
 
 ---
@@ -133,10 +156,20 @@ historical_data_priceX: 7 10 6 5 8
 
 historical_data_priceY: 23 25 16 20 15
 
-beta: 0.2679227
+beta: betaF[historical_data_priceX;historical_data_priceY] // = 0.2679227
 
-alpha: 2.444817
+alpha: alphaF[historical_data_priceX;historical_data_priceY] // = 2.444817
 ```
+
+### Code Explanation
+
+As you can observe, we utilize the `betaF` and `alphaF` functions to compute the beta and alpha coefficients for a given dataset. Specifically, these functions perform linear regression to estimate alpha and beta based on historical values.
+
+The implementation of these functions is based on the following formulas:
+
+$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$
+
+$\alpha = \text{Mean}(y) - \beta \cdot \text{Mean}(x)$
 
 ---
 
@@ -144,7 +177,11 @@ We've already calculated the alpha and beta using the logarithmic values of our 
 
 ---
 
-$spreads$ = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
+```q
+spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha) // = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
+```
+
+> 🖥️ In Q/kdb+, operand priority is strictly from right to left, without any precedence rules except those involving parentheses. Therefore, it's crucial to exercise caution when writing Q code to ensure accurate results.
 
 ---
 
@@ -184,11 +221,19 @@ As previously mentioned, historical data is crucial for generating accurate spre
 
 ```q
 // Fix data and take log(prices) -> Simulated data
-priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from (update dateTime:"P"$@[;19;:;"."] each dateTime from tab1) where not null bid);
-priceY: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from (update dateTime:"P"$@[;19;:;"."] each dateTime from tab2) where not null bid);
+priceX: 0!1_(update delta:0f^deltas dateTime from 
+        distinct select distinct dateTime, log bid, log ask from
+        (update dateTime:"P"$@[;19;:;"."] each dateTime from 
+        tab1) where not null bid);
+
+priceY: 0!1_(update delta:0f^deltas dateTime from 
+        distinct select distinct dateTime, log bid, log ask from 
+        (update dateTime:"P"$@[;19;:;"."] each dateTime from 
+        tab2) where not null bid);
 
 // Read historical data
 historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:/data/stocks/NASDAQ100_hist.csv;
+
 historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/stocks/SP500_hist.csv;
 ```
 
@@ -203,6 +248,7 @@ Now, armed with logarithms, we can replicate the process from our previous examp
 ```q
 // Calculate alpha and beta from historical values
 beta_lr: betaF[px:-100#log historial_tab1`close;py:-100#log historial_tab2`close]; // we only take most recent 100 values 
+
 alpha_lr: alphaF[px;py];
 ```
 
@@ -232,6 +278,8 @@ In this case we are using a [KX Dashboard](https://code.kx.com/dashboards/) to p
 
 Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spreads discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in our next post about the Kalman Filter and its application in Pairs Trading.
 
+> 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll delve deeper into this topic in a subsequent post that will expand the scope of the current discussion as we previously mentioned.
+
 For now, it's crucial to clarify **our spread formulation and understand what it represents**. With this knowledge, we can identify instances where one asset is overpriced while the other is underpriced.
 
 One might argue that our calculations are heavily influenced by past data, and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we can utilize **the Kalman Filter**, a mathematical method for filtering noise and predicting states in a dynamic system. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
@@ -255,6 +303,19 @@ We aimed to demonstrate the capabilities of Q/kdb+ and its potential in a simpli
 
 We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economical perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
 
-Be sure to stay tuned for more posts and updates on this blog to deepen your knowledge even further
+Be sure to stay tuned for more posts and updates on this blog to deepen your knowledge even further. 
 
 Special thanks to [...] for [...]
+
+## References and Documentation
+
+For the technical implementation we relied on:
+
+* Kx Documentation: https://code.kx.com/q/ref/
+* Q for mortals: https://code.kx.com/q4m3/
+* Pykx Documentation: https://code.kx.com/pykx/2.4/index.html
+* statsmodels Documentation: https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.coint.html
+
+For the financial implementation we used:
+
+* QuantResearch: https://github.com/QuantConnect/Research/blob/master/Analysis/02%20Kalman%20Filter%20Based%20Pairs%20Trading.ipynb
