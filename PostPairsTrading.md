@@ -40,7 +40,7 @@ Next, we import the statsmodels.tsa.stattools library and define a custom cointe
 
 ---
 
-![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/CointAlGif.gif?raw=true)
+![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/resources/CointAlGif.gif?raw=true)
 
 ---
 
@@ -85,9 +85,11 @@ Now, with our matrix in hand, we can plot it and **visually identify** which ass
 |:---------:|:---------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
 |   USA     |   USA     | Belgium  |  France  | Germany  | Hong Kong|S.Korea   |  Mexico  |  Europe  |  Japan   |   USA    |   USA    |  Europe  |
 
-![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/ADFgif.gif?raw=true)
+![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
 As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, what makes them a perfect fit for our case.
+
+![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
 
 ## Cointegration, then what?
 
@@ -268,7 +270,7 @@ spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+a
 
 This approach will provide us with:
 
-![SpreadsD](https://github.com/hablapps/pairstrading/blob/5-Post/SpreadsD.JPG?raw=true)
+![SpreadsD](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Spreads%20gif.gif?raw=true)
 
 And there we have it! **A perfectly plotted spread series in real-time**, ready to be utilized for further analysis and exploitation.
 
