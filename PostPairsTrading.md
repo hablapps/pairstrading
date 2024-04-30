@@ -1,8 +1,8 @@
-# A Match Made in Trading: Step by Step Pairs Trading Guide
+# A Match Made in Trading: Step-by-Step Pairs Trading Guide
 
-Q/kdb+ stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of pair trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
+Q/kdb+ stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
 
-Our objective is to **provide a deep understanding of the intricacies of pair trading**, bridging the gap between theory and practice. Through a blend of theoretical insights and practical examples, we aim to equip you with the knowledge and skills necessary to navigate every aspect of this financial modeling strategy.
+Our objective is to **provide a deep understanding of the intricacies of pair trading**, bridging the gap between theory and practice. Through a blend of theoretical insights and practical examples, we aim to equip you with the knowledge and skills necessary to navigate every aspect of this financial modelling strategy.
 
 We'll proceed methodically, ensuring each question leads to a comprehensive answer. To start, we'll contextualize our current situation by addressing key questions such as **"What do we know about the market and how can we benefit from it?"**. This will lay the foundation for constructing a real-time simulated environment on Pairs Trading that will exemplify everything we have explained thus far.
 
@@ -18,7 +18,7 @@ Is this described mathematically? **Yes**:
 
 The concept we're referring to is **cointegration** (although there are other methods, we'll focus on this one).
 
-> 💡 Which should not be confused with correlation; cointegration is a statistical property of two time series, indicating a long-term relationship between them despite short-term fluctuations. Cointegrated series move together over time, sharing a common stochastic drift. On the other hand, correlation measures the strength and direction of the linear relationship between two variables at a specific point in time. While correlation captures the degree of association between variables, cointegration reflects a deeper, underlying relationship that persists over time.
+> 💡 Which should not be confused with correlation; cointegration is a statistical property of two-time series, indicating a long-term relationship between them despite short-term fluctuations. Cointegrated series move together over time, sharing a common stochastic drift. On the other hand, correlation measures the strength and direction of the linear relationship between two variables at a specific point in time. While correlation captures the degree of association between variables, cointegration reflects a deeper, underlying relationship that persists over time.
 
 Hence, we're interested in **cointegrated assets**, which are assets that exhibit the following characteristics:
 
@@ -30,13 +30,20 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 ### ADF testing
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data.
 
-> 💡 Please note that for simplicity in this code, we will be using pykx. This is necessary as we need to import our ADF test function and plot a heatmap of our results.
+The ADF test assesses whether movements in a given time series are dependent on previous movements. It does so by formulating a **null hypothesis**, which it aims to reject. To achieve this, we seek **a negative statistical value** that is as significant as possible and **falls below certain critical values** representing confidence limits or thresholds. Additionally, we examine the **p-value**, which succinctly expresses the probability of making an incorrect inference with the test. Consequently, we aim for the p-value to be as low as possible.
+
+💡 Please note that for simplicity in this code, we will be using [PyKx](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKx to streamline the process by importing relevant libraries such as statsmodels.
  
-> `system "l pykx.q"`
+```q
+system "l pykx.q"
+```
 
-Next, we import the statsmodels.tsa.stattools library and define a custom cointegration function that returns a dictionary with the ADF test results given 2 assets. **We then apply our cointegration function to the Cartesian product of every pair of assets** to get a matrix with every p-value. 
+Next, we import the **statsmodels library**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for data analysis, encompassing regression analysis, time series analysis, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+
+
+We proceed to define a custom cointegration function, which returns a dictionary containing the results of the Augmented Dickey-Fuller (ADF) test for two assets. Subsequently, we apply this custom cointegration function to **the Cartesian product of every pair of assets** to obtain a matrix comprising the **p-values** associated with each pair.
 
 ---
 
@@ -48,11 +55,12 @@ Next, we import the statsmodels.tsa.stattools library and define a custom cointe
 // We import the cointegration function from statsmodels library in python
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint; 
 
-// Recieves 2 symbols and returns a dictionary
-fCoint: {p1:0f^(exec close from superTab where sym=x); // AssetX
-        p2: 0f^(exec close from superTab where sym=y); // AssetY
-        r: 0f^coint[p1;p2]`; // Coint results
-        `pair`score`pvalue`porcentages!(enlist (x,y);r[0];r[1];enlist r[2])}; // Get every result into a dictionary
+p1:0f^(exec close from superTab where sym=x); // AssetX
+p2: 0f^(exec close from superTab where sym=y); // AssetY
+
+// Receives 2 symbols and returns a dictionary
+fCoint: {[p1;p2] r: 0f^coint[p1;p2]`; // Coint results
+        `pair`score`pvalue`percentages!(enlist (x,y);r[0];r[1];enlist r[2])}; // Get every result into a dictionary
 
 // We extract every distinct symbol
 symList: exec distinct sym from superTab;
@@ -64,17 +72,25 @@ matrix: fCoint .' crossedList;
 
 ### Code explanation
 
-1. The `coint` function **is imported from statsmodels**, thanks to the pykx library, which provides a cointegration tool in Python. This variable transforms every input data into its Python equivalent, facilitating the calculation of cointegration results.
+1. The `coint` function **is imported from statsmodels**, thanks to the PyKx library, which provides a cointegration tool in Python. 
 
-2. We then proceed to **create our custom cointegration function** called `fCoint`, which retrieves both asset prices from our table based on the input symbols. Subsequently, it utilizes the previously imported coint function to obtain the results and inserts them into a dictionary. (`symbol1symbol2...!(;v1;v2;...)`)
+2. We retrieve data from **"supertab"**, a consolidated table that aggregates all our assets into a single table. This consolidation allows us to streamline our queries and access all relevant information in one place.
 
-3. We use QSQL to **extract every distinct symbol** from our table with the keyword [`exec`](https://code.kx.com/q/ref/exec/).
+3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the results and inserts them into **a dictionary**. (`symbol1symbol2...!(;v1;v2;...)`)
 
-> 💡[QSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in Q/kdb+. Which makes it pretty accesible for newcomers to this language.
+| Pair            | Score               | P-value                    | Percentages    |
+|-----------------|---------------------|----------------------------|----------------|
+| Pair of symbols | Statistical value   | Probability of being wrong | Thresholds     |
 
-4. We utilize the `cross` operator, which conducts a [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) on every symbol, **generating all possible pair combinations**.
 
-5. Finally, **we apply our function from step 2 to our list of every pair of symbols from step 4**. We can achive this by using the [apply operator](https://code.kx.com/q/ref/apply/) (`.`) follow by an [`each`](https://code.kx.com/q/ref/maps/#each) (`'`). So that we apply our function (`fCoint .' `) to each and every pair (`crossedList`)
+
+4. We use qSQL to **extract every distinct symbol** from our table with the keyword [`exec`](https://code.kx.com/q/ref/exec/).
+
+> 💡[qSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in Q/kdb+. Which makes it pretty accesible for newcomers to this language.
+
+5. We utilize the `cross` operator, which conducts a [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) on every symbol, **generating all possible pair combinations**.
+
+6. Finally, **we apply our function from step 2 to our list of every pair of symbols from step 4**. We can achieve this by using the [apply operator](https://code.kx.com/q/ref/apply/) (`.`) followed by an [`each`](https://code.kx.com/q/ref/maps/#each) (`'`). So that we apply our function (`fCoint .' `) to each and every pair (`crossedList`)
 
 ---
 
@@ -87,9 +103,15 @@ Now, with our matrix in hand, we can plot it and **visually identify** which ass
 
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
-As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, what makes them a perfect fit for our case.
+As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, which is what makes them a perfect fit for our case.
+
+ In the heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
 ![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
+
+If we plot their prices like the graphs above, we observe a similar tendency corresponding to the cointegration we just verified.
+
+In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
 
 ## Cointegration, then what?
 
@@ -99,7 +121,7 @@ Let's recap our progress:
 
 2. By employing the **cointegration method and the ADF test**, we pinpointed a promising pair of assets for our analysis: NASDAQ100 and SP500.
 
-3. These two assets exhibit similar movements and **tend to gravitate around a shared mean**.
+3. These two assets **exhibit similar movements**.
 
 Now we're faced with a crucial question: **"What do I do with these assets?"**
 
@@ -111,7 +133,9 @@ However, this presents **an opportunity for profit** because we know that these 
 
 ## Spreading spreads
 
-Indeed, just subtracting the prices of two assets, as in: $priceY−priceX$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
+To check for deviations in our prices, we could simply subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
+
+Indeed, just subtracting the prices of two assets, as in $priceY−priceX$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
 Consider the following series:
 
@@ -131,7 +155,7 @@ spreads: priceY - priceX // = 18 20 18 26 27
 
 〽 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
-Let's consider **using logarithms**, as they possess favorable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
+Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
 
 --- 
 
@@ -150,8 +174,6 @@ We're making progress, as we observe **numbers now fluctuating within much small
 Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them:
 
 --- 
-
-$spread = log(priceY) - (beta * log(priceX)+alpha)$
 
 ```q
 historical_data_priceX: 7 10 6 5 8
@@ -175,9 +197,11 @@ $\alpha = \text{Mean}(y) - \beta \cdot \text{Mean}(x)$
 
 ---
 
-We've already calculated the alpha and beta using the logarithmic values of our historical data (since we don't have prior knowledge of the real-time price values for priceX and priceY). Now, all that remains is to apply the previous formula to derive our spreads:
+We've already calculated the alpha and beta using the logarithmic values of our historical data (since we don't have prior knowledge of the real-time price values for priceX and priceY). Now, all that remains is to join everything together and apply linear reggresion to our price logarithms:
 
 ---
+
+$spread = log(priceY) - (beta * log(priceX)+alpha)$
 
 ```q
 spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha) // = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
@@ -187,14 +211,14 @@ spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha) // = -0.
 
 ---
 
-And this precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
+This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
 ![Spreads](https://github.com/hablapps/pairstrading/blob/5-Post/Spreads.gif?raw=true)
 
 
 ## Two steps forward, one step back.
 
-Before proceeding to plot the NASDAQ100-SP500 spreads, we need to first plan our algorithm. In this post, we intend to create **a real-time scenario** for Pairs trading, so careful planning is essential for our sake.
+Before proceeding to plot the NASDAQ100-SP500 spreads, we need to first plan our algorithm. In this post, we intend to create **a real time scenario** for Pairs Trading, so careful planning is essential for our sake.
 
 Decomposing our steps, let's start from the very beginning:
 
@@ -204,13 +228,13 @@ Decomposing our steps, let's start from the very beginning:
 
         1.2. Filter data
 
-2. Outside the loop
+2. Outside the .z.ts
 
         2.1. Linear regression
 
         2.2. Initialize values 
 
-3. Inside the loop
+3. Inside the .z.ts
 
         3.1. Calculate spreads
 
@@ -266,7 +290,7 @@ spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+a
 
 ---
 
-> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This is because we are simulating the arrival of these records dynamically, based on some delta time.
+> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This occurs because we simulate the arrival of these records dynamically, based on a delta time, and thus read from our buffer (a table of 1000 elements), utilizing our updated index `.streamPair.i` with each passing second.
 
 This approach will provide us with:
 
@@ -274,17 +298,15 @@ This approach will provide us with:
 
 And there we have it! **A perfectly plotted spread series in real-time**, ready to be utilized for further analysis and exploitation.
 
-In this case we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
+## What's left to start making a profit? 
 
-## What's left to start making profit? 
-
-Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spreads discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in our next post about the Kalman Filter and its application in Pairs Trading.
+Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in a follow up post about the Kalman Filter and its application in Pairs Trading.
 
 > 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll delve deeper into this topic in a subsequent post that will expand the scope of the current discussion as we previously mentioned.
 
 For now, it's crucial to clarify **our spread formulation and understand what it represents**. With this knowledge, we can identify instances where one asset is overpriced while the other is underpriced.
 
-One might argue that our calculations are heavily influenced by past data, and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we can utilize **the Kalman Filter**, a mathematical method for filtering noise and predicting states in a dynamic system. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
+One might argue that our calculations are heavily influenced by past data and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we can utilize **the Kalman Filter**, a mathematical method for filtering noise and predicting states in a dynamic system. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
 
 Additionally, even though we fit our model with historical data, we could implement **a rolling window approach** where the linear regression is continuously updated. This would ensure that our model remains responsive to changes in the underlying data over time.
 
@@ -298,10 +320,10 @@ Recapping, we have covered:
 2. An examination of cointegrated assets within the market.
 3. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
 4. A presentation of the pairs trading strategy itself.
-5. A clear and guided explanation of spreads calculation, interpretation, and implementation in Q/kdb+.
+5. A clear and guided explanation of spread calculation, interpretation, and implementation in Q/kdb+.
 6. Additional knowledge necessary to master the strategy.
 
-We aimed to demonstrate the capabilities of Q/kdb+ and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavors.
+We aimed to demonstrate the capabilities of Q/kdb+ and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavours.
 
 We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economical perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
 
@@ -311,13 +333,13 @@ Special thanks to [...] for [...]
 
 ## References and Documentation
 
-For the technical implementation we relied on:
+For the technical implementation, we relied on:
 
 * Kx Documentation: https://code.kx.com/q/ref/
 * Q for mortals: https://code.kx.com/q4m3/
 * Pykx Documentation: https://code.kx.com/pykx/2.4/index.html
 * statsmodels Documentation: https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.coint.html
 
-For the financial implementation we used:
+For the financial implementation, we used:
 
 * QuantResearch: https://github.com/QuantConnect/Research/blob/master/Analysis/02%20Kalman%20Filter%20Based%20Pairs%20Trading.ipynb
