@@ -121,8 +121,6 @@ Let's recap our progress:
 
 2. By employing the **cointegration method and the ADF test**, we pinpointed a promising pair of assets for our analysis: NASDAQ100 and SP500.
 
-3. These two assets **exhibit similar movements**.
-
 Now we're faced with a crucial question: **"What do I do with these assets?"**
 
 As mentioned earlier, the market is inherently random and doesn't always behave predictably. While NASDAQ100 and SP500 often follow similar trends, their individual values **can sometimes diverge significantly**. For instance, NASDAQ100 may rise while SP500 falls, or vice versa. 
