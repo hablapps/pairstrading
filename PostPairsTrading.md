@@ -47,7 +47,7 @@ We proceed to define a custom cointegration function, which returns a dictionary
 
 ---
 
-![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/resources/CointAlGif.gif?raw=true)
+![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/resources/CointFunction.jpg?raw=true)
 
 ---
 
