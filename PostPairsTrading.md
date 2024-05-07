@@ -325,7 +325,8 @@ Recapping, we have covered:
 
 We aimed to demonstrate the capabilities of Q/kdb+ and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavours.
 
-We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economical perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
+We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economic perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
+
 
 Be sure to stay tuned for more posts and updates on this blog to deepen your knowledge even further. 
 
