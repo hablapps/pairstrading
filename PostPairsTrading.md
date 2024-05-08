@@ -1,6 +1,6 @@
 # A Match Made in Trading: Step-by-Step Pairs Trading Guide
 
-Q/kdb+ stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
+KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
 
 Our objective is to **provide a deep understanding of the intricacies of pair trading**, bridging the gap between theory and practice. Through a blend of theoretical insights and practical examples, we aim to equip you with the knowledge and skills necessary to navigate every aspect of this financial modelling strategy.
 
@@ -8,7 +8,7 @@ We'll proceed methodically, ensuring each question leads to a comprehensive answ
 
 Whether taking a technical or quantitative approach, these insights will provide valuable foundations for constructing this algorithm effectively.
 
-## In the untamed realm of the market.
+## In the untamed realm of the market
 
 The market has often been described as a **stochastic** (a term which essentially means random) **process** where prices fluctuate irregularly. However, amidst this apparent randomness, we observe that **certain assets move in tandem** due to their inherent relationships. 
 
@@ -26,7 +26,7 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 2. This inherent relationship persists in the long run, meaning that our series is not dependent on time.
 
-## A pair in the hand is worth two in the bush.
+## A pair in the hand is worth two in the bush
 
 ### ADF testing
 
@@ -34,14 +34,13 @@ Imagine **we selected 13 world indexes** and aimed to assess whether they are **
 
 The ADF test assesses whether movements in a given time series are dependent on previous movements. It does so by formulating a **null hypothesis**, which it aims to reject. To achieve this, we seek **a negative statistical value** that is as significant as possible and **falls below certain critical values** representing confidence limits or thresholds. Additionally, we examine the **p-value**, which succinctly expresses the probability of making an incorrect inference with the test. Consequently, we aim for the p-value to be as low as possible.
 
-💡 Please note that for simplicity in this code, we will be using [PyKx](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKx to streamline the process by importing relevant libraries such as statsmodels.
- 
+💡 Please note that for simplicity in this code, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries such as statsmodels.
+
 ```q
 system "l pykx.q"
 ```
 
 Next, we import the **statsmodels library**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for data analysis, encompassing regression analysis, time series analysis, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
-
 
 We proceed to define a custom cointegration function, which returns a dictionary containing the results of the Augmented Dickey-Fuller (ADF) test for two assets. Subsequently, we apply this custom cointegration function to **the Cartesian product of every pair of assets** to obtain a matrix comprising the **p-values** associated with each pair.
 
@@ -72,21 +71,19 @@ matrix: fCoint .' crossedList;
 
 ### Code explanation
 
-1. The `coint` function **is imported from statsmodels**, thanks to the PyKx library, which provides a cointegration tool in Python. 
+1. The `coint` function **is imported from statsmodels**, thanks to the PyKX library, which provides a cointegration tool in Python. 
 
 2. We retrieve data from **"supertab"**, a consolidated table that aggregates all our assets into a single table. This consolidation allows us to streamline our queries and access all relevant information in one place.
 
 3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the results and inserts them into **a dictionary**. (`symbol1symbol2...!(;v1;v2;...)`)
 
-| Pair            | Score               | P-value                    | Percentages    |
-|-----------------|---------------------|----------------------------|----------------|
-| Pair of symbols | Statistical value   | Probability of being wrong | Thresholds     |
-
-
+| Pair            | Score             | P-value                    | Percentages |
+| --------------- | ----------------- | -------------------------- | ----------- |
+| Pair of symbols | Statistical value | Probability of being wrong | Thresholds  |
 
 4. We use qSQL to **extract every distinct symbol** from our table with the keyword [`exec`](https://code.kx.com/q/ref/exec/).
 
-> 💡[qSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in Q/kdb+. Which makes it pretty accesible for newcomers to this language.
+> 💡[qSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in KDB+/Q. Which makes it pretty accesible for newcomers to this language.
 
 5. We utilize the `cross` operator, which conducts a [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) on every symbol, **generating all possible pair combinations**.
 
@@ -96,10 +93,9 @@ matrix: fCoint .' crossedList;
 
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. Given our following assets:
 
-
-|   SP500   | NASDAQ100 |   BFX    |   FCHI   |  GDAXI   |   HSI    |   KS11   |   MXX    |   N100   |   N225   |   NYA    |   RUT    |  STOXX   |
-|:---------:|:---------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
-|   USA     |   USA     | Belgium  |  France  | Germany  | Hong Kong|S.Korea   |  Mexico  |  Europe  |  Japan   |   USA    |   USA    |  Europe  |
+| SP500 | NASDAQ100 | BFX     | FCHI   | GDAXI   | HSI       | KS11    | MXX    | N100   | N225  | NYA | RUT | STOXX  |
+|:-----:|:---------:|:-------:|:------:|:-------:|:---------:|:-------:|:------:|:------:|:-----:|:---:|:---:|:------:|
+| USA   | USA       | Belgium | France | Germany | Hong Kong | S.Korea | Mexico | Europe | Japan | USA | USA | Europe |
 
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
@@ -147,11 +143,11 @@ priceY: 23 30 25 30 35
 spreads: priceY - priceX // = 18 20 18 26 27
 ```
 
-> 💡 As you can see and verify through Q/kdb+ array properties, spreads can be calculated by simply computing the difference between two vectors without the need for special functions or loops.
+> 💡 As you can see and verify through KDB+/Q array properties, spreads can be calculated by simply computing the difference between two vectors without the need for special functions or loops.
 
 ---
 
-〽 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
+**These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
 Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
 
@@ -205,7 +201,7 @@ $spread = log(priceY) - (beta * log(priceX)+alpha)$
 spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha) // = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-> 🖥️ In Q/kdb+, operand priority is strictly from right to left, without any precedence rules except those involving parentheses. Therefore, it's crucial to exercise caution when writing Q code to ensure accurate results.
+> 🖥️ In KDB+/Q, operand priority is strictly from right to left, without any precedence rules except those involving parentheses. Therefore, it's crucial to exercise caution when writing Q code to ensure accurate results.
 
 ---
 
@@ -213,8 +209,7 @@ This precisely meets our objective—a **comprehensive method for representing r
 
 ![Spreads](https://github.com/hablapps/pairstrading/blob/5-Post/Spreads.gif?raw=true)
 
-
-## Two steps forward, one step back.
+## Two steps forward, one step back
 
 Before proceeding to plot the NASDAQ100-SP500 spreads, we need to first plan our algorithm. In this post, we intend to create **a real time scenario** for Pairs Trading, so careful planning is essential for our sake.
 
@@ -222,22 +217,21 @@ Decomposing our steps, let's start from the very beginning:
 
 1. Data management part
 
-        1.1. Read data
+	1.1. Read data
 
-        1.2. Filter data
+    1.2. Filter data
 
 2. Outside the .z.ts
 
-        2.1. Linear regression
+    2.1. Linear regression
 
-        2.2. Initialize values 
+    2.2. Initialize values 
 
 3. Inside the .z.ts
 
-        3.1. Calculate spreads
+    3.1. Calculate spreads
 
-        3.2. Write on buffers
-
+    3.2. Write on buffers
 
 As previously mentioned, historical data is crucial for generating accurate spreads. We need to calculate each spread in real-time **using precomputed alpha and beta values** derived from both prices. Therefore, once we have obtained our historical values, we can proceed with calculating our linear regression.
 
@@ -296,7 +290,7 @@ This approach will provide us with:
 
 And there we have it! **A perfectly plotted spread series in real-time**, ready to be utilized for further analysis and exploitation.
 
-## What's left to start making a profit? 
+## What's left to start making a profit?
 
 Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in a follow up post about the Kalman Filter and its application in Pairs Trading.
 
@@ -310,7 +304,7 @@ Additionally, even though we fit our model with historical data, we could implem
 
 ## The End
 
-In conclusion, this post aims to provide a comprehensive overview that explains Pairs Trading from beginning to end, covering every aspect that may be relevant to understanding this topic and its intricacies in Q/kdb+.
+In conclusion, this post aims to provide a comprehensive overview that explains Pairs Trading from beginning to end, covering every aspect that may be relevant to understanding this topic and its intricacies in KDB+/Q.
 
 Recapping, we have covered:
 
@@ -318,13 +312,12 @@ Recapping, we have covered:
 2. An examination of cointegrated assets within the market.
 3. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
 4. A presentation of the pairs trading strategy itself.
-5. A clear and guided explanation of spread calculation, interpretation, and implementation in Q/kdb+.
+5. A clear and guided explanation of spread calculation, interpretation, and implementation in KDB+/Q.
 6. Additional knowledge necessary to master the strategy.
 
-We aimed to demonstrate the capabilities of Q/kdb+ and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavours.
+We aimed to demonstrate the capabilities of KDB+/Q and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavours.
 
 We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economic perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
-
 
 Be sure to stay tuned for more posts and updates on this blog to deepen your knowledge even further. 
 
@@ -336,7 +329,7 @@ For the technical implementation, we relied on:
 
 * Kx Documentation: https://code.kx.com/q/ref/
 * Q for mortals: https://code.kx.com/q4m3/
-* Pykx Documentation: https://code.kx.com/pykx/2.4/index.html
+* PyKX Documentation: https://code.kx.com/pykx/2.4/index.html
 * statsmodels Documentation: https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.coint.html
 
 For the financial implementation, we used:
