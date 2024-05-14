@@ -2,11 +2,13 @@
 \l linear_regression.q
 
 // load tables
-tab1: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USA500IDXUSD.csv;
-tab2: 1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",") 0: `:data/USATECHIDXUSD.csv;
+readTick:{1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",")0: `$":data/",string[x],".csv"}
+readHist:{1_ flip enlist[`close]!("   F  ";",") 0: `$":data/",string[x],"_hist.csv"}
+tab1:readTick `USA500IDXUSD
+tab2:readTick `USATECHIDXUSD
 tab3: flip `dateTime`spread`mean`up`low`ewma`up2`low2!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$());
-historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/SP500_hist.csv;
-historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/NASDAQ100_hist.csv;
+historial_tab1:readHist `SP500
+historial_tab2:readHist `NASDAQ100
 
 // Fix data and take log(prices)
 priceX: 0!1_(update delta:0f^deltas dateTime from distinct select distinct dateTime, log bid, log ask from update dateTime:"P"$@[;19;:;"."] each dateTime from tab1);
