@@ -38,18 +38,12 @@ matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
 // We create a p-values matrix from the ADF test results and set values above the diagonal to 1
 pvalues: ones (count[syms]*til count syms)_matrix 
 
-// We set some variables in Pyhton memory
-.pykx.set[`ADFpairs;pvalues];
-.pykx.set[`syms;syms];
 
-// We change to Python in order to plot our results and we import our needed libraries
-.pykx.pyexec"import numpy as np";
-.pykx.pyexec"import seaborn";
-.pykx.pyexec"import matplotlib.pyplot as plt";
+pyhm:.pykx.import[`seaborn]`:heatmap
 
-// We convert our pvalues to a numpy array so that we do not get any parsing errors
-.pykx.pyexec"pvalues = np.array(ADFpairs, float)";
+pyhm[pvalues;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
 
-// We plot a heatmap
-.pykx.pyexec"seaborn.heatmap(pvalues, xticklabels = syms, yticklabels=syms, cmap='RdYlGn_r', mask= (pvalues >= 0.99))";
-.pykx.pyexec"plt.show()";
+pyshow:.pykx.import[`matplotlib.pyplot]`:show
+
+pyshow[::]
+
