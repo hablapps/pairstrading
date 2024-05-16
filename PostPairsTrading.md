@@ -54,40 +54,31 @@ We proceed to define a custom cointegration function, which returns a dictionary
 // We import the cointegration function from statsmodels library in python
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 
-p1:0f^(exec close from superTab where sym=x) // AssetX
-p2: 0f^(exec close from superTab where sym=y) // AssetY
+// Receives which stock(sym) you want to get data from
+read_stock:{[sym1]
+  update sym: sym1 from 1_ flip enlist[`close]!((5#" "),"F";",") 0:`$":data/stocks/",string[sym1],".csv"}
 
-// Receives 2 symbols and returns a dictionary
-fCoint: {[p1;p2] r: 0f^coint[p1;p2]`; // Coint results
-        `pair`score`pvalue`percentages!(enlist (x,y);r[0];r[1];enlist r[2])} // Get every result into a dictionary
+// Receives 2 list of prices
+fCoint: {@[;1]0f^coint[0f^x;0f^y]`} // We just return P-value
 
-// We extract every distinct symbol
-symList: exec distinct sym from superTab
+syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
+// 252 -> working days in a year (4 years in working days)
+trange:4*252
+// We join every data table in one
+superTab: `sym xgroup raze read_stock each syms
 
-crossedList: symList cross symList
-
-matrix: fCoint .' crossedList
+// We apply our cointegration function on every pair of symbols form our crossedList
+matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
 ```
 
 ### Code explanation
 
 1. The `coint` function **is imported from statsmodels**, thanks to the PyKX library, which provides a cointegration tool in Python. 
 
-2. We retrieve data from **"supertab"**, a consolidated table that aggregates all our assets into a single table. This consolidation allows us to streamline our queries and access all relevant information in one place.
+2. We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate(`raze`) all the data into a table, and finally group(`xgroup`) by index.
 
-3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the results and inserts them into **a dictionary**. (`symbol1symbol2...!(;v1;v2;...)`)
-
-| Pair            | Score             | P-value                    | Percentages |
-| --------------- | ----------------- | -------------------------- | ----------- |
-| Pair of symbols | Statistical value | Probability of being wrong | Thresholds  |
-
-4. We use qSQL to **extract every distinct symbol** from our table with the keyword [`exec`](https://code.kx.com/q/ref/exec/).
-
-> 💡[qSQL](https://code.kx.com/q/basics/qsql/) is a set of feautures that permits users to perform SQL-operations with a very similar syntax on tables in KDB+/Q. Which makes it pretty accesible for newcomers to this language.
-
-5. We utilize the `cross` operator, which conducts a [Cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) on every symbol, **generating all possible pair combinations**.
-
-6. Finally, **we apply our function from step 2 to our list of every pair of symbols from step 4**. We can achieve this by using the [apply operator](https://code.kx.com/q/ref/apply/) (`.`) followed by an [`each`](https://code.kx.com/q/ref/maps/#each) (`'`). So that we apply our function (`fCoint .' `) to each and every pair (`crossedList`)
+3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the P-values.
+4. We generate all combinations(`cross`) of indexes to see which pair is most cointegrated. Then, we index(`@`) each pair in our table. Additionally, we take(`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each(`.'`) pair of data lists.
 
 ---
 
@@ -152,11 +143,10 @@ Consider the following series:
 ---
 
 ```q
-priceX: 5 10 7 4 8
-
-priceY: 23 30 25 30 35
-
-spreads: priceY - priceX // = 18 20 18 26 27
+q)priceX: 5 10 7 4 8
+q)priceY: 23 30 25 30 35
+q)spreads: priceY - priceX
+18 20 18 26 27
 ```
 
 > 💡 As you can see and verify through KDB+/Q array properties, spreads can be calculated by simply computing the difference between two vectors without the need for special functions or loops.
@@ -170,11 +160,12 @@ Let's consider **using logarithms**, as they possess favourable properties for o
 --- 
 
 ```q
-log priceX = 1.609438 2.302585 1.94591 1.386294 2.079442
-
-log priceY = 3.135494 3.401197 3.218876 3.401197 3.555348
-
-spreads: log[priceY] - log priceX // = 1.526056 1.098612 1.272966 2.014903 1.475907
+q)log priceX
+1.609438 2.302585 1.94591 1.386294 2.079442
+q)log priceY
+3.135494 3.401197 3.218876 3.401197 3.555348
+q)spreads: log[priceY] - log priceX
+1.526056 1.098612 1.272966 2.014903 1.475907
 ```
 
 ---
@@ -186,13 +177,16 @@ Since both assets are related, **we can leverage linear regression** to our adva
 --- 
 
 ```q
-historical_data_priceX: 7 10 6 5 8
-
-historical_data_priceY: 23 25 16 20 15
-
-beta: betaF[historical_data_priceX;historical_data_priceY] // = 0.2679227
-
-alpha: alphaF[historical_data_priceX;historical_data_priceY] // = 2.444817
+q)historical_data_priceX: 7 10 6 5 8
+q)historical_data_priceY: 23 25 16 20 15
+q)betaF:{dot:{sum x*y};                                      
+      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
+      ((n:count[x])*dot[x;x])-sum[x]xexp 2}
+q)alphaF: {avg[y]-(betaF[x;y]*avg[x])}
+q)beta: betaF[historical_data_priceX;historical_data_priceY]
+0.2679227
+q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
+2.444817
 ```
 
 ### Code Explanation
@@ -214,7 +208,8 @@ We've already calculated the alpha and beta using the logarithmic values of our 
 $spread = log(priceY) - (beta * log(priceX)+alpha)$
 
 ```q
-spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha) // = -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
+q)spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha)
+-0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
 > 🖥️ In KDB+/Q, operand priority is strictly from right to left, without any precedence rules except those involving parentheses. Therefore, it's crucial to exercise caution when writing Q code to ensure accurate results.
@@ -255,20 +250,16 @@ As previously mentioned, historical data is crucial for generating accurate spre
 
 ```q
 // Fix data and take log(prices) -> Simulated data
-priceX: 0!1_(update delta:0f^deltas dateTime from 
-        distinct select distinct dateTime, log bid, log ask from
-        (update dateTime:"P"$@[;19;:;"."] each dateTime from 
-        tab1) where not null bid);
+readTick:{1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",")0: `$":data/",string[x],".csv"}
 
-priceY: 0!1_(update delta:0f^deltas dateTime from 
-        distinct select distinct dateTime, log bid, log ask from 
-        (update dateTime:"P"$@[;19;:;"."] each dateTime from 
-        tab2) where not null bid);
+tab1:readTick `USA500IDXUSD
+tab2:readTick `USATECHIDXUSD
 
 // Read historical data
-historial_tab2: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:/data/stocks/NASDAQ100_hist.csv;
+readHist:{1_ flip enlist[`close!("   F  ";",") 0: `$":data/",string[x],"_hist.csv"}
 
-historial_tab1: 1_ flip `open`high`low`close`adjClose`vol!("FFFFFF";",") 0: `:data/stocks/SP500_hist.csv;
+historial_tab1:readHist `SP500
+historial_tab2:readHist `NASDAQ100
 ```
 
 ---

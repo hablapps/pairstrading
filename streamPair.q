@@ -3,7 +3,7 @@
 
 // load tables
 readTick:{1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",")0: `$":data/",string[x],".csv"}
-readHist:{1_ flip enlist[`close]!("   F  ";",") 0: `$":data/",string[x],"_hist.csv"}
+readHist:{1_ flip enlist[`close!("   F  ";",") 0: `$":data/",string[x],"_hist.csv"}
 tab1:readTick `USA500IDXUSD
 tab2:readTick `USATECHIDXUSD
 tab3: flip `dateTime`spread`mean`up`low`ewma`up2`low2!("P"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$();"F"$());
