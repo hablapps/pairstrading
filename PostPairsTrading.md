@@ -75,10 +75,10 @@ matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
 
 1. The `coint` function **is imported from statsmodels**, thanks to the PyKX library, which provides a cointegration tool in Python. 
 
-2. We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate(`raze`) all the data into a table, and finally group(`xgroup`) by index.
+2. We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
 
 3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the P-values.
-4. We generate all combinations(`cross`) of indexes to see which pair is most cointegrated. Then, we index(`@`) each pair in our table. Additionally, we take(`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each(`.'`) pair of data lists.
+4. We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists.
 
 ---
 
