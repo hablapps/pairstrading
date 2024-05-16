@@ -52,21 +52,21 @@ We proceed to define a custom cointegration function, which returns a dictionary
 
 ```q
 // We import the cointegration function from statsmodels library in python
-coint:.pykx.import[`statsmodels.tsa.stattools]`:coint; 
+coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 
-p1:0f^(exec close from superTab where sym=x); // AssetX
-p2: 0f^(exec close from superTab where sym=y); // AssetY
+p1:0f^(exec close from superTab where sym=x) // AssetX
+p2: 0f^(exec close from superTab where sym=y) // AssetY
 
 // Receives 2 symbols and returns a dictionary
 fCoint: {[p1;p2] r: 0f^coint[p1;p2]`; // Coint results
-        `pair`score`pvalue`percentages!(enlist (x,y);r[0];r[1];enlist r[2])}; // Get every result into a dictionary
+        `pair`score`pvalue`percentages!(enlist (x,y);r[0];r[1];enlist r[2])} // Get every result into a dictionary
 
 // We extract every distinct symbol
-symList: exec distinct sym from superTab;
+symList: exec distinct sym from superTab
 
 crossedList: symList cross symList
 
-matrix: fCoint .' crossedList;
+matrix: fCoint .' crossedList
 ```
 
 ### Code explanation
@@ -91,11 +91,27 @@ matrix: fCoint .' crossedList;
 
 ---
 
-Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. Given our following assets:
+Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
+
+```q
+pyhm:.pykx.import[`seaborn]`:heatmap
+pyhm[pvalues;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
+```
+
+And plot it:
+
+```q
+pyshow:.pykx.import[`matplotlib.pyplot]`:show
+pyshow[::]
+```
+
+Given our following assets:
 
 | SP500 | NASDAQ100 | BFX     | FCHI   | GDAXI   | HSI       | KS11    | MXX    | N100   | N225  | NYA | RUT | STOXX  |
 |:-----:|:---------:|:-------:|:------:|:-------:|:---------:|:-------:|:------:|:------:|:-----:|:---:|:---:|:------:|
 | USA   | USA       | Belgium | France | Germany | Hong Kong | S.Korea | Mexico | Europe | Japan | USA | USA | Europe |
+
+Our heatmap looks like this:
 
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
