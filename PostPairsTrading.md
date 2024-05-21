@@ -32,9 +32,15 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data.
 
-The ADF test assesses whether movements in a given time series are dependent on previous movements. It does so by formulating a **null hypothesis**, which it aims to reject. To achieve this, we seek **a negative statistical value** that is as significant as possible and **falls below certain critical values** representing confidence limits or thresholds. Additionally, we examine the **p-value**, which succinctly expresses the probability of making an incorrect inference with the test. Consequently, we aim for the p-value to be as low as possible.
+The ADF test assesses whether movements in a given time series are dependent on previous movements. It does so by formulating a **null hypothesis**, which it aims to reject. To achieve this, we seek **a negative statistical value** that is as significant as possible and **falls below certain critical values** representing confidence limits or thresholds. Additionally, we examine the **p-value**, which succinctly expresses the probability of making an incorrect inference with the test. Consequently, we aim for this p-value to be as low as possible.
 
-💡 Please note that for simplicity in this code, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries such as statsmodels.
+> TODO: explain this
+```q
+syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
+trange:4*252
+```
+
+For simplicity in this code, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries such as statsmodels.
 
 ```q
 system "l pykx.q"
@@ -42,45 +48,30 @@ system "l pykx.q"
 
 Next, we import the **statsmodels library**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for data analysis, encompassing regression analysis, time series analysis, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
 
-We proceed to define a custom cointegration function, which returns a dictionary containing the results of the Augmented Dickey-Fuller (ADF) test for two assets. Subsequently, we apply this custom cointegration function to **the Cartesian product of every pair of assets** to obtain a matrix comprising the **p-values** associated with each pair.
+```q
+coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
+```
 
----
-
-![cointegration](https://github.com/hablapps/pairstrading/blob/5-Post/resources/CointFunction.png?raw=true)
-
----
+We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
 
 ```q
-// We import the cointegration function from statsmodels library in python
-coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
-
-// Receives which stock(sym) you want to get data from
 read_stock:{[sym1]
   update sym: sym1 from 1_ flip enlist[`close]!((5#" "),"F";",") 0:`$":data/stocks/",string[sym1],".csv"}
 
-// Receives 2 list of prices
-fCoint: {@[;1]0f^coint[0f^x;0f^y]`} // We just return P-value
-
-syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
-// 252 -> working days in a year (4 years in working days)
-trange:4*252
-// We join every data table in one
 superTab: `sym xgroup raze read_stock each syms
-
-// We apply our cointegration function on every pair of symbols form our crossedList
-matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
 ```
 
-### Code explanation
+We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the P-values.
 
-1. The `coint` function **is imported from statsmodels**, thanks to the PyKX library, which provides a cointegration tool in Python. 
+```q
+fCoint: {@[;1]0f^coint[0f^x;0f^y]`}
+```
 
-2. We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
+We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists.
 
-3. We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the P-values.
-4. We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists.
-
----
+```q
+matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
+```
 
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
 
@@ -112,6 +103,9 @@ As we can observe, there are several cointegrated indices, but our attention wil
 
 ![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
 
+
+> TODO: explain a bit more
+
 If we plot their prices like the graphs above, we observe a similar tendency corresponding to the cointegration we just verified.
 
 In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
@@ -130,7 +124,7 @@ As mentioned earlier, the market is inherently random and doesn't always behave 
 
 However, this presents **an opportunity for profit** because we know that these assets tend to revert to their shared mean over time. If one asset is **overpriced** and likely to decrease, we may consider **selling it** (going short). Conversely, if an asset is **underpriced** and expected to increase, we may consider **buying it** (going long). And that is what we call Pairs Trading.
 
-> 💡 This strategy possesses intriguing financial characteristics: our **profitability remains unaffected by the broader market trends**, as our focus lies solely on the disparity between the two assets. It's about relative movements rather than absolute ones; we're indifferent to whether prices are rising or falling. This quality defines it as a **neutral market strategy**.
+> 💡 This strategy possesses financial characteristics: our **profitability remains unaffected by the broader market trends**, as our focus lies solely on the disparity between the two assets. It's about relative movements rather than absolute ones; we're indifferent to whether prices are rising or falling. This quality defines it as a **neutral market strategy**.
 
 ## Spreading spreads
 
@@ -140,7 +134,6 @@ Indeed, just subtracting the prices of two assets, as in $priceY−priceX$ may n
 
 Consider the following series:
 
----
 
 ```q
 q)priceX: 5 10 7 4 8
@@ -149,15 +142,13 @@ q)spreads: priceY - priceX
 18 20 18 26 27
 ```
 
-> 💡 As you can see and verify through KDB+/Q array properties, spreads can be calculated by simply computing the difference between two vectors without the need for special functions or loops.
-
----
 
 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
+> TODO: why do they possess favourable properties for our pricing model?
+
 Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
 
---- 
 
 ```q
 q)log priceX
@@ -168,42 +159,18 @@ q)spreads: log[priceY] - log priceX
 1.526056 1.098612 1.272966 2.014903 1.475907
 ```
 
----
-
 We're making progress, as we observe **numbers now fluctuating within much smaller ranges**. However, we're still missing a clear understanding of the underlying relationship. While we've normalized the data using logarithms, we now need to align their discrepancies to a single asset. 
 
-Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them:
-
---- 
+Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. Given the following historical data prices:
 
 ```q
 q)historical_data_priceX: 7 10 6 5 8
 q)historical_data_priceY: 23 25 16 20 15
-q)betaF:{dot:{sum x*y};                                      
-      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
-      ((n:count[x])*dot[x;x])-sum[x]xexp 2}
-q)alphaF: {avg[y]-(betaF[x;y]*avg[x])}
-q)beta: betaF[historical_data_priceX;historical_data_priceY]
-0.2679227
-q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
-2.444817
 ```
 
-### Code Explanation
-
-As you can observe, we utilize the `betaF` and `alphaF` functions to compute the beta and alpha coefficients for a given dataset. Specifically, these functions perform linear regression to estimate alpha and beta based on historical values.
-
-The implementation of these functions is based on the following formulas:
-
-$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$
-
-$\alpha = \text{Mean}(y) - \beta \cdot \text{Mean}(x)$
-
----
+> TODO: Rephrase this below
 
 We've already calculated the alpha and beta using the logarithmic values of our historical data (since we don't have prior knowledge of the real-time price values for priceX and priceY). Now, all that remains is to join everything together and apply linear reggresion to our price logarithms:
-
----
 
 $spread = log(priceY) - (beta * log(priceX)+alpha)$
 
@@ -212,13 +179,37 @@ q)spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha)
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-> 🖥️ In KDB+/Q, operand priority is strictly from right to left, without any precedence rules except those involving parentheses. Therefore, it's crucial to exercise caution when writing Q code to ensure accurate results.
 
----
+> TODO: explain Beta
+
+$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$
+
+Which we can see implemented in the following functions:
+
+```q
+q)betaF:{dot:{sum x*y};                                      
+      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
+      ((n:count[x])*dot[x;x])-sum[x]xexp 2}
+q)beta: betaF[historical_data_priceX;historical_data_priceY]
+0.2679227
+```
+
+> TODO: explain alpha
+
+$\alpha = \text{Mean}(y) - \beta \cdot \text{Mean}(x)$
+
+Which is implemented in the following lines of code:
+
+```q
+q)alphaF: {avg[y]-(betaF[x;y]*avg[x])}
+q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
+2.444817
+```
+
+> TODO: check this
 
 This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
-![Spreads](https://github.com/hablapps/pairstrading/blob/5-Post/Spreads.gif?raw=true)
 
 ## Two steps forward, one step back
 
