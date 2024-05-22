@@ -30,11 +30,9 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 ### ADF testing
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
 
-The ADF test assesses whether movements in a given time series are dependent on previous movements. It does so by formulating a **null hypothesis**, which it aims to reject. To achieve this, we seek **a negative statistical value** that is as significant as possible and **falls below certain critical values** representing confidence limits or thresholds. Additionally, we examine the **p-value**, which succinctly expresses the probability of making an incorrect inference with the test. Consequently, we aim for this p-value to be as low as possible.
-
-> TODO: explain this
+To do this, we declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration. In another variable, **trange**, we set the size of the window over which we want to gather the data to check for cointegration. In this case, we use the number of working days in the last 4 years as the window size.
 ```q
 syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
 trange:4*252
@@ -51,8 +49,10 @@ Next, we import the **statsmodels library**, a prominent tool in Python for stat
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
+For our study, we retrieved data for the different indexes using the Yahoo Finance API and stored them in the data/stocks directory. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
 
-We declare the function **read_stock** to read the closing data of a given index. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
+We declare the function **read_stock** to read the closing data of a given index.
+ This function uses the `0:` operator to read the files. This operator takes the delimiter and the schema (in this case, we only want to read the closing price column as a float). Additionally, since these data do not include any reference to the index being read, we need to make a small adjustment to our data to add the index associated with each price. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
 
 ```q
 read_stock:{[sym1]
@@ -61,7 +61,7 @@ read_stock:{[sym1]
 superTab: `sym xgroup raze read_stock each syms
 ```
 
-We then proceed to **create our custom cointegration function** called `fCoint`, which utilizes the previously imported coint function to obtain the P-values.
+We then proceed to create a function called **fCoint** to call our imported function from Pykx, handle any null values by filling them with 0, using `0f^` , and finally return the second value, which in this case is the p-value 
 
 ```q
 fCoint: {@[;1]0f^coint[0f^x;0f^y]`}
@@ -101,12 +101,14 @@ As we can observe, there are several cointegrated indices, but our attention wil
 
  In the heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
+ > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available, and we used TickStory to obtain this data.
+
 ![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
 
 
-> TODO: explain a bit more
+The graphs illustrate the concept of cointegration between two indices. The top two graphs show the prices of SP500 (left) and NASDAQ100 (right) over the same time period. We can observe that the price movements of these two indices follow similar patterns, suggesting a level of cointegration.
 
-If we plot their prices like the graphs above, we observe a similar tendency corresponding to the cointegration we just verified.
+The bottom graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 represents Index 2. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together in the long run, maintaining a stable relationship.
 
 In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
 
