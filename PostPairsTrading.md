@@ -32,44 +32,40 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
 
-To do this, we declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration. In another variable, **trange**, we set the size of the window over which we want to gather the data to check for cointegration. In this case, we use the number of working days in the last 4 years as the window size.
-```q
-syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
-trange:4*252
-```
-
-For simplicity in this code, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries such as statsmodels.
+For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries such as statsmodels.
 
 ```q
 system "l pykx.q"
 ```
 
-Next, we import the **statsmodels library**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for data analysis, encompassing regression analysis, time series analysis, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+Next, we need to import the **statsmodels library**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for data analysis, encompassing regression analysis, time series analysis, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-For our study, we retrieved data for the different indexes using the Yahoo Finance API and stored them in the data/stocks directory. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
+For our study, we retrieved data for the different indexes using the Yahoo Finance API and stored them in the `data/stocks/` directory. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
 
 We declare the function **read_stock** to read the closing data of a given index.
- This function uses the `0:` operator to read the files. This operator takes the delimiter and the schema (in this case, we only want to read the closing price column as a float). Additionally, since these data do not include any reference to the index being read, we need to make a small adjustment to our data to add the index associated with each price. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index.
+This function uses `0:` to read the files, which takes the delimiter and the schema. In this case, we only want to read the closing price column as a float. Additionally, since the data does not include any reference to the index being read, we need to make a small adjustment to our table to add the index associated with each price. Then, we apply this function to `each` of the indexes from which we want to read the data, and afterwards concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index. We declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration.
 
 ```q
 read_stock:{[sym1]
   update sym: sym1 from 1_ flip enlist[`close]!((5#" "),"F";",") 0:`$":data/stocks/",string[sym1],".csv"}
-
+syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
 superTab: `sym xgroup raze read_stock each syms
 ```
 
-We then proceed to create a function called **fCoint** to call our imported function from Pykx, handle any null values by filling them with 0, using `0f^` , and finally return the second value, which in this case is the p-value 
+We then proceed to create a function called **fCoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
 
 ```q
 fCoint: {@[;1]0f^coint[0f^x;0f^y]`}
 ```
 
-We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists.
+We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
+
 
 ```q
+trange:4*252
 matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
 ```
 
@@ -98,17 +94,16 @@ Our heatmap looks like this:
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
 As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, which is what makes them a perfect fit for our case.
+In this heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
- In the heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
-
- > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available, and we used TickStory to obtain this data.
+ > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available. We used TickStory to obtain the data.
 
 ![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
 
 
-The graphs illustrate the concept of cointegration between two indices. The top two graphs show the prices of SP500 (left) and NASDAQ100 (right) over the same time period. We can observe that the price movements of these two indices follow similar patterns, suggesting a level of cointegration.
+The graphs illustrate the concept of cointegration between two indexes. The top two graphs show the prices of SP500 (left) and NASDAQ100 (right) over the same time period. We can observe that the price movements of these two indices follow similar patterns, suggesting some level of cointegration.
 
-The bottom graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 represents Index 2. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together in the long run, maintaining a stable relationship.
+The bottom graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 is represented by the red line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together in the long run, maintaining a stable relationship.
 
 In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
 
