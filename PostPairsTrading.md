@@ -154,8 +154,7 @@ We're making progress, as we observe **numbers now fluctuating within much small
 
 Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. The generic formulae for one is:
 
-> TODO: default formulae
-$$log(priceY) = \alpha + \beta \cdot log(priceX)$$
+$$Y = \alpha + \beta X + \varepsilon$$
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
