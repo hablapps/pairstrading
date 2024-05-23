@@ -198,8 +198,6 @@ q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
 2.444817
 ```
 
-> TODO: check this
-
 This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
 
