@@ -142,9 +142,8 @@ q)spreads: priceY - priceX
 
 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
-> TODO: why do they possess favourable properties for our pricing model?
 
-Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They inherently prevent negative values and tend to approach zero:
+Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability.:
 
 
 ```q
@@ -158,29 +157,25 @@ q)spreads: log[priceY] - log priceX
 
 We're making progress, as we observe **numbers now fluctuating within much smaller ranges**. However, we're still missing a clear understanding of the underlying relationship. While we've normalized the data using logarithms, we now need to align their discrepancies to a single asset. 
 
-Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. Given the following historical data prices:
+Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. 
+
+$$log(priceY) = \alpha + \beta \cdot log(priceX)$$
+
+Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
+
+$$spread = log(priceY) - (\beta \cdot log(priceX)+\alpha)$$
 
 ```q
-q)historical_data_priceX: 7 10 6 5 8
-q)historical_data_priceY: 23 25 16 20 15
-```
-
-> TODO: Rephrase this below
-
-We've already calculated the alpha and beta using the logarithmic values of our historical data (since we don't have prior knowledge of the real-time price values for priceX and priceY). Now, all that remains is to join everything together and apply linear reggresion to our price logarithms:
-
-$spread = log(priceY) - (beta * log(priceX)+alpha)$
-
-```q
-q)spreads: historical_data_priceY - ((historical_data_priceX*beta)+alpha)
+q)spreads: log[priceY] - alpha + log[priceX] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
 
-> TODO: explain Beta
+The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
+$$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha))^2$$
 
-$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$
-
+After taking partial derivatives with respect beta and setting to zero, and then solving, we can arrive at this formula:
+$$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$$
 Which we can see implemented in the following functions:
 
 ```q
@@ -191,14 +186,14 @@ q)beta: betaF[historical_data_priceX;historical_data_priceY]
 0.2679227
 ```
 
-> TODO: explain alpha
+Now, following the same steps as before but for alpha, we arrive at:
 
-$\alpha = \text{Mean}(y) - \beta \cdot \text{Mean}(x)$
+$$\alpha = \bar y - \beta \cdot \bar x$$
 
 Which is implemented in the following lines of code:
 
 ```q
-q)alphaF: {avg[y]-(betaF[x;y]*avg[x])}
+q)alphaF: {avg[y]-betaF[x;y]*avg[x]}
 q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
 2.444817
 ```
