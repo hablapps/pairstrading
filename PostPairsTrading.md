@@ -129,9 +129,6 @@ To check for deviations in our prices, we could simply subtract them and observe
 
 Indeed, just subtracting the prices of two assets, as in $priceY−priceX$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
-Consider the following series:
-
-
 ```q
 q)priceX: 5 10 7 4 8
 q)priceY: 23 30 25 30 35
@@ -139,12 +136,10 @@ q)spreads: priceY - priceX
 18 20 18 26 27
 ```
 
-
 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
 
-Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability.:
-
+Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability:
 
 ```q
 q)log priceX
@@ -157,8 +152,9 @@ q)spreads: log[priceY] - log priceX
 
 We're making progress, as we observe **numbers now fluctuating within much smaller ranges**. However, we're still missing a clear understanding of the underlying relationship. While we've normalized the data using logarithms, we now need to align their discrepancies to a single asset. 
 
-Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. 
+Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. The generic formulae for one is:
 
+> TODO: default formulae
 $$log(priceY) = \alpha + \beta \cdot log(priceX)$$
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
@@ -169,7 +165,6 @@ $$spread = log(priceY) - (\beta \cdot log(priceX)+\alpha)$$
 q)spreads: log[priceY] - alpha + log[priceX] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
-
 
 The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
 $$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha))^2$$
