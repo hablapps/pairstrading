@@ -22,18 +22,17 @@ ones:{x .[;;:;1f]/l where((<=).')l:a cross a:til n:count x}
 // @param asset1 {float[]} Close prices of the first asset
 // @param asset2 {float[]} Close prices of the second asset
 // @return {dict} p_value of ADF test
-fCoint: {@[;1]0f^coint[0f^x;0f^y]`}
+fCoint: {@[;1]0f^coint[x;y]`}
 
 // We hardcore read from every .csv the historical data
 syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
-read_stock:{[sym1]
-  update sym: sym1 from 1_ flip enlist[`close]!((5#" "),"F";",") 0:`$":data/stocks/",string[sym1],".csv"}
+rs:{([]sym:x;close:first((5#" "),"F";csv) 0:`$":data/stocks/",string[x],".csv")}
 
 // We join every table in one
-superTab: `sym xgroup raze read_stock each syms
+t: `sym xgroup raze rs each syms
 
 // We apply our cointegration function on every pair of symbols form our crossedList
-matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[superTab]')syms cross syms
+matrix: fCoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
 
 // We create a p-values matrix from the ADF test results and set values above the diagonal to 1
 pvalues: ones (count[syms]*til count syms)_matrix 
