@@ -32,6 +32,10 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
 
+This statistical test is a **hypothesis test**, where we use our data to see if we can accept or reject a hypothesis. In our case, the hypothesis is whether the time series is non-stationary. To determine this, we use **p-values**.
+
+**P-values** help us decide whether to reject the null hypothesis. If the p-value is low, it indicates that we can reject the hypothesis that the time series is non-stationary, suggesting that our assets are cointegrated. The lower the p-value, the greater the confidence in rejecting the null hypothesis. It is very common to use a threshold of 0.05 on the p-value to reject hypotheses.
+
 For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q might introduce errors and would be time-consuming, to say the least. Hence, we rely on PyKX to streamline the process by importing relevant libraries from the Python ecosystem.
 
 ```q
@@ -43,7 +47,7 @@ Next, we need to import the **statsmodels library**, a prominent tool in Python 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-For our study, we retrieved data for the different indexes using the Yahoo Finance API and stored them in the `data/stocks/` directory. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
+For our study, we retrieved data for the different indexes using the [Yahoo Finance API](https://pypi.org/project/yfinance/) and stored them in the `data/stocks/` directory, where we'll find one csv file for each index. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
 
 We declare the function **read_stock** to read the closing data of a given index.
 This function uses `0:` to read the files, which takes the delimiter and the schema. In this case, we only want to read the closing price column as a float. Additionally, since the data does not include any reference to the index being read, we need to make a small adjustment to our table to add the index associated with each price. Then, we apply this function to `each` of the indexes from which we want to read the data, concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index. We declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration.
@@ -57,7 +61,7 @@ t: `sym xgroup raze rs each syms
 We then proceed to create a function called **fCoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
 
 ```q
-fCoint: {@[;1]0f^coint[0f^x;0f^y]`}
+fCoint: {@[;1]0f^coint[x;y]`}
 ```
 
 We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
@@ -65,7 +69,7 @@ We generate all combinations (`cross`) of indexes to see which pair is most coin
 
 ```q
 trange:4*252
-matrix: fCoint .' neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
+matrix: fCoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
 ```
 
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
