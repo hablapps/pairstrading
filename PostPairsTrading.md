@@ -49,11 +49,16 @@ coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
 For our study, we retrieved data for the different indexes using the [Yahoo Finance API](https://pypi.org/project/yfinance/) and stored them in the `data/stocks/` directory, where we'll find one csv file for each index. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
 
-We declare the function **read_stock** to read the closing data of a given index.
-This function uses `0:` to read the files, which takes the delimiter and the schema. In this case, we only want to read the closing price column as a float. Additionally, since the data does not include any reference to the index being read, we need to make a small adjustment to our table to add the index associated with each price. Then, we apply this function to `each` of the indexes from which we want to read the data, concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index. We declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration.
+We declare the function `rs` (_read stock_) to read the closing data of a given index.
+This function uses `0:` to read the files, which takes the delimiter and the schema. In this case, we only want to read the closing price column as a float. Additionally, since the data does not include any reference to the index being read, we need to make a small adjustment to our table to add the index associated with each price.
 
 ```q
 rs:{([]sym:x;close:first((5#" "),"F";csv) 0:`$":data/stocks/",string[x],".csv")}
+```
+
+Then, we apply this function to `each` of the indexes from which we want to read the data, concatenate (`raze`) all the data into a table, and finally group (`xgroup`) by index. We declare a variable, **syms**, as a list of symbols, representing each of the indexes we want to check for cointegration.
+
+```q
 syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
 t: `sym xgroup raze rs each syms
 ```
@@ -117,7 +122,7 @@ Let's recap our progress:
 
 2. By employing the **cointegration method and the ADF test**, we pinpointed a promising pair of assets for our analysis: NASDAQ100 and SP500.
 
-Now we're faced with a crucial question: **"What do I do with these assets?"**
+Now we're faced with a crucial question: **"How can I benefit from this knowledge?"**
 
 As mentioned earlier, the market is inherently random and doesn't always behave predictably. While NASDAQ100 and SP500 often follow similar trends, their individual values **can sometimes diverge significantly**. For instance, NASDAQ100 may rise while SP500 falls, or vice versa. 
 
@@ -197,76 +202,19 @@ q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
 This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
 
-## Two steps forward, one step back
+## Real-Time Pair Party
 
-Before proceeding to plot the NASDAQ100-SP500 spreads, we need to first plan our algorithm. In this post, we intend to create **a real time scenario** for Pairs Trading, so careful planning is essential for our sake.
+Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-Decomposing our steps, let's start from the very beginning:
+> ⚠️ An important note is that this post will include a real-time simulation. In other words, if we wanted to develop a 100% real-time product, we would need to make slight adjustments to the code.
 
-1. Data management part
-
-	1.1. Read data
-
-    1.2. Filter data
-
-2. Outside the .z.ts
-
-    2.1. Linear regression
-
-    2.2. Initialize values 
-
-3. Inside the .z.ts
-
-    3.1. Calculate spreads
-
-    3.2. Write on buffers
-
-As previously mentioned, historical data is crucial for generating accurate spreads. We need to calculate each spread in real-time **using precomputed alpha and beta values** derived from both prices. Therefore, once we have obtained our historical values, we can proceed with calculating our linear regression.
-
----
-
-```q
-// Fix data and take log(prices) -> Simulated data
-readTick:{1_ flip `dateTime`bid`ask`bidVol`askVol!("*FFFF";",")0: `$":data/",string[x],".csv"}
-
-tab1:readTick `USA500IDXUSD
-tab2:readTick `USATECHIDXUSD
-
-// Read historical data
-readHist:{1_ flip enlist[`close!("   F  ";",") 0: `$":data/",string[x],"_hist.csv"}
-
-historial_tab1:readHist `SP500
-historial_tab2:readHist `NASDAQ100
-```
-
----
-
-## Linear regression
-
-Now, armed with logarithms, we can replicate the process from our previous example and calculate both alpha and beta values. To do this, we'll start by taking the historical data for NASDAQ100 and SP500 and applying our linear regression function to derive the desired values.
-
----
-
-```q
-// Calculate alpha and beta from historical values
-beta_lr: betaF[px:-100#log historial_tab1`close;py:-100#log historial_tab2`close]; // we only take most recent 100 values 
-
-alpha_lr: alphaF[px;py];
-```
-
----
-
-Now we just calculate our spreads as we did before like:
-
----
+As previously mentioned, historical data is crucial for generating accurate spreads. We need to calculate each spread in real-time **using precomputed alpha and beta values** derived from both prices. Therefore, once we have obtained our historical values, we can proceed with calculating our spreads from linear regression.
 
 ```q
 spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
 ```
 
----
-
-> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This occurs because we simulate the arrival of these records dynamically, based on a delta time, and thus read from our buffer (a table of 1000 elements), utilizing our updated index `.streamPair.i` with each passing second.
+> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This occurs because we simulate the arrival of these records dynamically, based on a delta time, and thus read from our real-time simulated table, utilizing our updated index `.streamPair.i` with each passing second.
 
 This approach will provide us with:
 
