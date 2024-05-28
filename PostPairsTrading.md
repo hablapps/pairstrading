@@ -93,9 +93,9 @@ pyshow[::]
 
 Given our following assets:
 
-| SP500 | NASDAQ100 | BFX     | FCHI   | GDAXI   | HSI       | KS11    | MXX    | N100   | N225  | NYA | RUT | STOXX  |
-|:-----:|:---------:|:-------:|:------:|:-------:|:---------:|:-------:|:------:|:------:|:-----:|:---:|:---:|:------:|
-| USA   | USA       | Belgium | France | Germany | Hong Kong | S.Korea | Mexico | Europe | Japan | USA | USA | Europe |
+| SP500 | NASDAQ100 |   BFX   |  FCHI  |  GDAXI  |    HSI    |  KS11   |  MXX   |  N100  | N225  |  NYA  |  RUT  | STOXX  |
+| :---: | :-------: | :-----: | :----: | :-----: | :-------: | :-----: | :----: | :----: | :---: | :---: | :---: | :----: |
+|  USA  |    USA    | Belgium | France | Germany | Hong Kong | S.Korea | Mexico | Europe | Japan |  USA  |  USA  | Europe |
 
 Our heatmap looks like this:
 
@@ -105,12 +105,11 @@ As we can observe, there are several cointegrated indices, but our attention wil
 In this heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
  > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available. We used TickStory to obtain the data.
-![Prices](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Prices%20gif.gif?raw=true)
+
+![Prices](resources/cointegration.png)
 
 
-The graphs illustrate the concept of cointegration between two indexes. The top two graphs show the prices of SP500 (left) and NASDAQ100 (right) over the same time period. We can observe that the price movements of these two indices follow similar patterns, suggesting some level of cointegration.
-
-The bottom graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 is represented by the red line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship.
+The graphs illustrate the concept of cointegration between two indexes. The graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 is represented by the green line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship.
 
 In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
 
@@ -163,6 +162,12 @@ Since both assets are related, **we can leverage linear regression** to our adva
 
 $$Y = \alpha + \beta X + \varepsilon$$
 
+In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 index, α is the intercept, β is the slope (which indicates the relationship strength between the two indices), and ε is the error term.
+
+![LinearRegression](resources/linear_regression.png)
+
+The graph above illustrates the relationship between the NASDAQ 100 and the S&P 500 indices, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indices. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 index price. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
+
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
 $$spread = log(priceY) - (\beta \cdot log(priceX)+\alpha)$$
@@ -172,32 +177,11 @@ q)spreads: log[priceY] - alpha + log[priceX] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
-$$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha))^2$$
+There are different methods to obtain the best alpha and beta values that minimize the spreads. In other words, there are mathematical methods to find the line that best fits the prices.
 
-After taking partial derivatives with respect beta and setting to zero, and then solving, we can arrive at this formula:
-$$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$$
-Which we can see implemented in the following functions:
+The aim of this post is not to delve deeply into these methods but to mention that the most popular method is called the least squares method. For this case, it simplifies to provide a closed-form solution that depends on our historical data. This means we do not need any iterative algorithm or anything more complex to find these optimal alpha and beta values.
 
-```q
-q)betaF:{dot:{sum x*y};                                      
-      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
-      ((n:count[x])*dot[x;x])-sum[x]xexp 2}
-q)beta: betaF[historical_data_priceX;historical_data_priceY]
-0.2679227
-```
-
-Now, following the same steps as before but for alpha, we arrive at:
-
-$$\alpha = \bar y - \beta \cdot \bar x$$
-
-Which is implemented in the following lines of code:
-
-```q
-q)alphaF: {avg[y]-betaF[x;y]*avg[x]}
-q)alpha: alphaF[historical_data_priceX;historical_data_priceY]
-2.444817
-```
+>💡 For those interested in our implementation of these formulas in kdb+/q, the code can be found in our repository [Pair-Trading](https://github.com/hablapps/pairstrading/blob/5-Post/linear_regression.q).
 
 This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
@@ -218,21 +202,21 @@ spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+a
 
 This approach will provide us with:
 
-![SpreadsD](https://github.com/hablapps/pairstrading/blob/5-Post/resources/Spreads%20gif.gif?raw=true)
+![SpreadsD](resources/spreads.gif)
 
 And there we have it! **A perfectly plotted spread series in real-time**, ready to be utilized for further analysis and exploitation.
 
 ## What's left to start making a profit?
 
-Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in a follow up post about the Kalman Filter and its application in Pairs Trading.
+Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in a follow up post.
 
 > 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll delve deeper into this topic in a subsequent post that will expand the scope of the current discussion as we previously mentioned.
 
 For now, it's crucial to clarify **our spread formulation and understand what it represents**. With this knowledge, we can identify instances where one asset is overpriced while the other is underpriced.
 
-One might argue that our calculations are heavily influenced by past data and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we can utilize **the Kalman Filter**, a mathematical method for filtering noise and predicting states in a dynamic system. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
+One might argue that our calculations are heavily influenced by past data and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we could implement **a rolling window approach** where the linear regression is continuously updated. 
 
-Additionally, even though we fit our model with historical data, we could implement **a rolling window approach** where the linear regression is continuously updated. This would ensure that our model remains responsive to changes in the underlying data over time.
+This would ensure that our model remains responsive to changes in the underlying data over time. Additionally, we can use the Kalman Filter to dynamically fit the alpha and beta of the linear regression. The Kalman Filter effectively filters noise and predicts states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of the present market conditions. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
 
 ## The End
 
