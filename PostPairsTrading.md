@@ -42,7 +42,7 @@ For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4
 system "l pykx.q"
 ```
 
-One of such libraries is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
@@ -190,7 +190,7 @@ Now that we have selected a pair of cointegrated indices and understand how to c
 
 > ⚠️ An important note is that this post will include a real-time simulation. In other words, if we wanted to develop a 100% real-time product, we would need to make slight adjustments to the code.
 
-The first step to implementing this pair trading algorithm in real time is to declare a `.z.ts` function. This `.z.ts` function will be called automatically every x milliseconds, and these x milliseconds can be configured with `\t`.
+The first step to implementing this pair trading algorithm in real time is to declare a `.z.ts` function. This `.z.ts` function will be called automatically every x milliseconds which can be configured with `\t`. In our case, it will be called every 100 milliseconds.
 
 ```q
 .z.ts: {.streamPair.genPair[]} 
@@ -234,7 +234,7 @@ And there we have it! **A perfectly plotted spread series in real-time**, ready 
 
 Finally, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows.
 
-A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific moment from our case:
+A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
 
 ![SpreadsD](resources/window_signals.gif)
 
