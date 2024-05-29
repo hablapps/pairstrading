@@ -109,7 +109,7 @@ In this heatmap, they exhibit a vibrant green color, indicative of a high degree
 ![Prices](resources/cointegration.png)
 
 
-The graphs illustrate the concept of cointegration between two indexes. The graph displays the prices of both indices together, providing a clearer comparison. The blue line represents SP500, and NASDAQ100 is represented by the green line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship.
+The plotted graph displays the prices of both indexes together, providing a clearer comparison that showcases the cointegration between them. The blue line represents SP500, and NASDAQ100 is represented by the green line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship.
 
 In this case, we are using a [KX Dashboard](https://code.kx.com/dashboards/) to plot our data. We stream this data in one process to our local dashboard, which listens to that process and accesses the data to render visualizations.
 
@@ -166,7 +166,7 @@ In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 ind
 
 ![LinearRegression](resources/linear_regression.png)
 
-The graph above illustrates the relationship between the NASDAQ 100 and the S&P 500 indices, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indices. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 index price. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
+The plotted graph above illustrates the relationship between the NASDAQ 100 and the S&P 500 indices, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indices. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 index price. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
@@ -177,9 +177,9 @@ q)spreads: log[priceY] - alpha + log[priceX] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-There are different methods to obtain the best alpha and beta values that minimize the spreads. In other words, there are mathematical methods to find the line that best fits the prices.
+There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical methods to find the line that best fits the prices.
 
-The aim of this post is not to delve deeply into these methods but to mention that the most popular method is called the least squares method. For this case, it simplifies to provide a closed-form solution that depends on our historical data. This means we do not need any iterative algorithm or anything more complex to find these optimal alpha and beta values.
+The aim of this post is not to delve deeply into these methods but to mention that the most popular method is called the least squares method. For this case, it provides a closed-form solution that depends on our historical data. This means we do not need any iterative algorithm or a more complex method to find these optimal alpha and beta values.
 
 >💡 For those interested in our implementation of these formulas in kdb+/q, the code can be found in our repository [Pair-Trading](https://github.com/hablapps/pairstrading/blob/5-Post/linear_regression.q).
 
@@ -198,9 +198,9 @@ As previously mentioned, historical data is crucial for generating accurate spre
 spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
 ```
 
-> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This occurs because we simulate the arrival of these records dynamically, based on a delta time, and thus read from our real-time simulated table, utilizing our updated index `.streamPair.i` with each passing second.
+> 💡 You may notice that we retrieve bid price data from our price stream using an index (`.streamPair.i`). This occurs because we simulate the arrival of these records dynamically, based on a delta time, and thus read from our real-time simulated table, utilizing our updated index `.streamPair.i` with each new record.
 
-This approach will provide us with:
+Using this approach, we will end up with something like this:
 
 ![SpreadsD](resources/spreads.gif)
 
@@ -208,34 +208,28 @@ And there we have it! **A perfectly plotted spread series in real-time**, ready 
 
 ## What's left to start making a profit?
 
-Finally, once we have our spreads accurately calculated and observe how our data is being updated second by second, we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. Those windows, however, will be explored in greater depth in a follow up post.
+Finally, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows.
 
-> 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll delve deeper into this topic in a subsequent post that will expand the scope of the current discussion as we previously mentioned.
+> 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll dig deeper into this topic in a subsequent post that will expand the scope of the current discussion.
 
-For now, it's crucial to clarify **our spread formulation and understand what it represents**. With this knowledge, we can identify instances where one asset is overpriced while the other is underpriced.
+After all this, you should be able to understand **our spread formulation and what it represents**. Basically, we can identify instances where one asset is overpriced while the other is underpriced.
 
 One might argue that our calculations are heavily influenced by past data and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we could implement **a rolling window approach** where the linear regression is continuously updated. 
 
-This would ensure that our model remains responsive to changes in the underlying data over time. Additionally, we can use the Kalman Filter to dynamically fit the alpha and beta of the linear regression. The Kalman Filter effectively filters noise and predicts states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of the present market conditions. But we'll delve into the Kalman Filter in our upcoming posts as previously mentioned.
+This would ensure that our model remains responsive to changes in the underlying data over time. Additionally, we can use the Kalman Filter to dynamically fit the alpha and beta of the linear regression. The Kalman Filter effectively filters noise and predicts states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of the present market conditions.
 
-## The End
+## Conclusion
 
-In conclusion, this post aims to provide a comprehensive overview that explains Pairs Trading from beginning to end, covering every aspect that may be relevant to understanding this topic and its intricacies in KDB+/Q.
+In conclusion, this post has provided a comprehensive overview that explains Pairs Trading, covering every aspect that may be relevant to understanding this topic and its intricacies in KDB+/Q.
 
-Recapping, we have covered:
+We have covered:
 
-1. An introductory overview of the market as a whole.
-2. An examination of cointegrated assets within the market.
-3. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
-4. A presentation of the pairs trading strategy itself.
-5. A clear and guided explanation of spread calculation, interpretation, and implementation in KDB+/Q.
-6. Additional knowledge necessary to master the strategy.
+1. An examination of cointegrated assets within the market.
+2. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
+3. An introduction of the pairs trading strategy itself.
+4. A clear and guided explanation of spread calculation and interpretation KDB+/Q.
 
-We aimed to demonstrate the capabilities of KDB+/Q and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to make complex concepts more accessible and empower individuals to leverage these powerful tools in their own endeavours.
-
-We hope you found this information valuable and gained a good understanding of this financial tactic from both technical and economic perspectives. If you have any questions or need further clarification, don't hesitate to reach out. 
-
-Be sure to stay tuned for more posts and updates on this blog to deepen your knowledge even further. 
+We aimed to demonstrate the capabilities of KDB+/Q and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to made these concepts more accessible to empower individuals to leverage these powerful tools in their own way. If you have any questions or need further clarification, don't hesitate to reach out. 
 
 Special thanks to [...] for [...]
 
