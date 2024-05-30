@@ -188,12 +188,13 @@ This precisely meets our objective—a **comprehensive method for representing r
 
 Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-The first step to implementing this pair trading algorithm in real time is to declare a `.z.ts` function. This `.z.ts` function will be called automatically every x milliseconds which can be configured with `\t`. In our case, it will be called every 100 milliseconds.
+The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick). The .u.pub function takes two parameters: the name of the table to publish to and the content to be published, then it publishes the content to the table's subscribers.
 
 ```q
-.z.ts: {.stream_pair.gen_pair[]} 
+.z.ts: {.u.pub[`spreads;.stream_pair.gen_pair[]]} 
 \t 100
 ```
+>💡 The objective of this post is not to explain the tick architecture in detail. If you want more information, you can visit Alexander Unterrainer's blog, [DEFCONQ](https://www.defconq.tech/docs/category/kdb-architecture), where he explains the details thoroughly.
 
 Let's now see how our **.stream_pair.gen_pair** function should be defined. We are only simulating real time; we do not have a 100% real-time product. Therefore, we already have the data loaded into memory and only need to display it one by one. For this, we will use an index *.stream_pair.i** which we will update with each execution of our function. Please keep in mind that if we wanted to run this in a real real-time scenario, the code would need to be modified.
 
@@ -206,7 +207,7 @@ resY: price_y[.stream_pair.i];
 The purpose of this function is to calculate the corresponding price spreads. For this, we will use the spread formula that we already know.
 
 ```q
-spread: price_y[.stream_pair.i][`bid] - ((price_x[.stream_pair.i][`bid] * beta_lr)+alpha_lr);
+s: resY[`bid] - alpha_lr+resX[`bid] * beta_lr;;
 ```
 
 Putting everything together and returning a table with the time instant and the spread, we would get the function:
@@ -218,11 +219,11 @@ Putting everything together and returning a table with the time instant and the 
       resY: price_y[.stream_pair.i];
       s: resY[`bid] - alpha_lr+resX[`bid] * beta_lr;
       enlist `dt`spread`mean!
-            ("p"$(resX[`dt]);"f"$(s);"f"$(0));  
+            ("p"$(resX[`dt]);"f"$s;0f);  
  }
 ```
 
-Using this approach, we will end up with something like this:
+By using this approach, we only need to connect KX Dashboards to our publisher by setting up a new connection in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
 
 ![SpreadsD](resources/spreads.gif)
 
