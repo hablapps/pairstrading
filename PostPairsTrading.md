@@ -240,25 +240,22 @@ A simple approach to window signals is to set these windows as twice the histori
 
 In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (NASDAQ100) is overvalued relative to the SP500. Therefore, we should sell NASDAQ100 and buy SP500. At the end of the gif, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
 
-> 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series. However, we'll dig deeper into this topic in a subsequent post that will expand the scope of the current discussion.
-After all this, you should be able to understand **our spread formulation and what it represents**. Basically, we can identify instances where one asset is overpriced while the other is underpriced.
+> 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series.
 
-One might argue that our calculations are heavily influenced by past data and that we rely too much on historical changes that **may not accurately reflect the present reality**. This is indeed a **valid concern**. To address this issue, we could implement **a rolling window approach** where the linear regression is continuously updated. This would ensure that our model remains responsive to changes in the underlying data over time.
+## Conclusion and Future Work
 
- Additionally, we can use the Kalman Filter to dynamically fit the alpha and beta of the linear regression. The Kalman Filter effectively filters noise and predicts states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of the present market conditions.
+In this post, we have provided a comprehensive overview of Pairs Trading, covering its implementation and intricacies in KDB+/Q.
 
-## Conclusion
-
-In conclusion, this post has provided a comprehensive overview that explains Pairs Trading, covering every aspect that may be relevant to understanding this topic and its intricacies in KDB+/Q.
-
-We have covered:
+We have discussed:
 
 1. An examination of cointegrated assets within the market.
 2. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
-3. An introduction of the pairs trading strategy itself.
-4. A clear and guided explanation of spread calculation and interpretation KDB+/Q.
+3. An introduction to the pairs trading strategy itself.
+4. A clear and guided explanation of spread calculation and interpretation in KDB+/Q.
 
-We aimed to demonstrate the capabilities of KDB+/Q and its potential in a simplified manner that anyone can implement, particularly in the context of a widely used financial strategy. By doing so, we hope to made these concepts more accessible to empower individuals to leverage these powerful tools in their own way. If you have any questions or need further clarification, don't hesitate to reach out.
+One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
+
+Our goal was to demonstrate the capabilities of KDB+/Q and its potential in implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools in their own work. If you have any questions or need further clarification, don't hesitate to reach out.
 
 Special thanks to [...] for [...]
 
