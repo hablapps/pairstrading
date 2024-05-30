@@ -10,7 +10,7 @@
 // @param x {number[]} Independent variable
 // @param y {number[]} Dependent variable
 // @return {number} Beta (slope)   
-betaF:{dot:{sum x*y};                                      
+beta_f:{dot:{sum x*y};                                      
       ((n*dot[x;y])-(*/)(sum')(x;y))%                         
       ((n:count[x])*dot[x;x])-sum[x]xexp 2};
 
@@ -23,4 +23,4 @@ betaF:{dot:{sum x*y};
 // @param x {number[]} Independent variable
 // @param y {number[]} Dependent variable
 // @return {number} alpha (intercept)
-alphaF: {avg[y]-(betaF[x;y]*avg[x])};
+alpha_f: {avg[y]-(beta_f[x;y]*avg[x])};

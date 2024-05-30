@@ -66,15 +66,15 @@ t: `sym xgroup raze rs each syms
 We then proceed to create a function called **fCoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
 
 ```q
-fCoint: {@[;1]0f^coint[x;y]`}
+fcoint: {@[;1]0f^coint[x;y]`}
 ```
 
-We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fCoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
+We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
 
 
 ```q
 trange:4*252
-matrix: fCoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
+matrix: fcoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
 ```
 
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
@@ -131,12 +131,12 @@ However, this presents **an opportunity for profit** because we know that these 
 
 To check for deviations in our prices, we could simply subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
 
-Indeed, just subtracting the prices of two assets, as in $priceY−priceX$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
+Indeed, just subtracting the prices of two assets, as in $price_y−price_x$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
 ```q
-q)priceX: 5 10 7 4 8
-q)priceY: 23 30 25 30 35
-q)spreads: priceY - priceX
+q)price_x: 5 10 7 4 8
+q)price_y: 23 30 25 30 35
+q)spreads: price_y - price_x
 18 20 18 26 27
 ```
 
@@ -146,11 +146,11 @@ q)spreads: priceY - priceX
 Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability:
 
 ```q
-q)log priceX
+q)log price_x
 1.609438 2.302585 1.94591 1.386294 2.079442
-q)log priceY
+q)log price_y
 3.135494 3.401197 3.218876 3.401197 3.555348
-q)spreads: log[priceY] - log priceX
+q)spreads: log[price_y] - log price_x
 1.526056 1.098612 1.272966 2.014903 1.475907
 ```
 
@@ -166,18 +166,18 @@ In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 ind
 
 The plotted graph above illustrates the relationship between the NASDAQ 100 and the S&P 500 indices, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indices. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 index price. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
 
-Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for priceX and priceY are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
+Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for price_x and price_y are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
-$$spread = log(priceY) - (\beta \cdot log(priceX)+\alpha)$$
+$$spread = log(price_y) - (\beta \cdot log(price_x)+\alpha)$$
 
 ```q
-q)spreads: log[priceY] - alpha + log[priceX] * beta
+q)spreads: log[price_y] - alpha + log[price_x] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical methods to find the line that best fits the prices.
+There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical ways to find the line that best fits the prices.
 
-The aim of this post is not to delve deeply into these methods but to mention that the most popular method is called the least squares method. For this case, it provides a closed-form solution that depends on our historical data. This means we do not need any iterative algorithm or a more complex method to find these optimal alpha and beta values.
+The aim of this post is not to delve deeply into them but to mention that the most popular one is called the least squares method. For this case, it provides a closed-form solution that depends on our historical data. This means we do not need any iterative algorithm or anything more complex to find these optimal alpha and beta values.
 
 >💡 For those interested in our implementation of these formulas in kdb+/q, the code can be found in our repository [Pair-Trading](https://github.com/hablapps/pairstrading/blob/5-Post/linear_regression.q).
 
@@ -188,39 +188,37 @@ This precisely meets our objective—a **comprehensive method for representing r
 
 Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-> ⚠️ An important note is that this post will include a real-time simulation. In other words, if we wanted to develop a 100% real-time product, we would need to make slight adjustments to the code.
-
 The first step to implementing this pair trading algorithm in real time is to declare a `.z.ts` function. This `.z.ts` function will be called automatically every x milliseconds which can be configured with `\t`. In our case, it will be called every 100 milliseconds.
 
 ```q
-.z.ts: {.streamPair.genPair[]} 
+.z.ts: {.stream_pair.gen_pair[]} 
 \t 100
 ```
 
-Let's now see how our **.streamPair.genPair** function should be defined. In our case, we are simulating real time; we do not have a 100% real-time product. Therefore, we already have the data loaded into memory and only need to display it one by one. For this, we will use an index **streamPair.i** which we will update with each execution of our function. 
+Let's now see how our **.stream_pair.gen_pair** function should be defined. We are only simulating real time; we do not have a 100% real-time product. Therefore, we already have the data loaded into memory and only need to display it one by one. For this, we will use an index *.stream_pair.i** which we will update with each execution of our function. Please keep in mind that if we wanted to run this in a real real-time scenario, the code would need to be modified.
 
 ```q
-.streamPair.i+:1;
-resX: priceX[.streamPair.i];
-resY: priceY[.streamPair.i];
+.stream_pair.i+:1;
+resX: price_x[.stream_pair.i];
+resY: price_y[.stream_pair.i];
 ```
 
 The purpose of this function is to calculate the corresponding price spreads. For this, we will use the spread formula that we already know.
 
 ```q
-spread: priceY[.streamPair.i][`bid] - ((priceX[.streamPair.i][`bid] * beta_lr)+alpha_lr);
+spread: price_y[.stream_pair.i][`bid] - ((price_x[.stream_pair.i][`bid] * beta_lr)+alpha_lr);
 ```
 
 Putting everything together and returning a table with the time instant and the spread, we would get the function:
 
 ```q
- .streamPair.genPair:{
-      .streamPair.i+:1;
-      resX: priceX[.streamPair.i];
-      resY: priceY[.streamPair.i];
+ .stream_pair.gen_pair:{
+      .stream_pair.i+:1;
+      resX: price_x[.stream_pair.i];
+      resY: price_y[.stream_pair.i];
       s: resY[`bid] - alpha_lr+resX[`bid] * beta_lr;
-      enlist `dateTime`spread`mean!
-            ("p"$(resX[`dateTime]);"f"$(s);"f"$(0));  
+      enlist `dt`spread`mean!
+            ("p"$(resX[`dt]);"f"$(s);"f"$(0));  
  }
 ```
 
@@ -236,7 +234,7 @@ Finally, once we have our spreads accurately calculated and observe how our data
 
 A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
 
-![SpreadsD](resources/window_signals.gif)
+![WSignals](resources/window_signals.gif)
 
 In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (NASDAQ100) is overvalued relative to the SP500. Therefore, we should sell NASDAQ100 and buy SP500. At the end of the gif, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
 
