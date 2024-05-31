@@ -8,6 +8,12 @@ We'll proceed methodically, ensuring each question leads to a comprehensive answ
 
 Whether taking a technical or quantitative approach, these insights will provide valuable foundations for constructing this algorithm effectively.
 
+We will be covering the following aspects using the KDB tick architecture as a base:
+
+![Architecture](resources/general-architecture.png)
+
+As you can see, there are a few new components added to the picture. The details will be discussed as we go on, but I'm sure you can already recognize some familiar faces.
+
 ## In the untamed realm of the market
 
 The market has often been described as a **stochastic** (a term which essentially means random) **process** where prices fluctuate irregularly. However, amidst this apparent randomness, we observe that **certain assets move in tandem** due to their inherent relationships. 
