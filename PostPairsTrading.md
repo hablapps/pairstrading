@@ -2,7 +2,7 @@
 
 KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
 
-Our objective is to **provide an easy to understand explanation about some of the intricacies of pair trading**, bridging the gap between theory and practice.
+Our objective is to **provide an easy-to-understand explanation of some of the intricacies of pair trading**, bridging the gap between theory and practice.
 
 We'll proceed methodically, ensuring each question leads to a comprehensive answer. To start, we'll contextualize our current situation by addressing key questions such as **"What do we know about the market and how can we benefit from it?"**. This will lay the foundation for constructing a real-time simulated environment on Pairs Trading that will exemplify everything we have explained thus far.
 
@@ -42,12 +42,12 @@ For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4
 system "l pykx.q"
 ```
 
-One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+One such library is **statsmodels**, a prominent tool in Python for statistical modelling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-For our study, we retrieved data for the different indexes using the [Yahoo Finance API](https://pypi.org/project/yfinance/) and stored them in the `data/stocks/` directory, where we'll find one csv file for each index. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
+For our study, we retrieved data for the different indexes using the [Yahoo Finance API](https://pypi.org/project/yfinance/) and stored them in the `data/stocks/` directory, where we'll find one CSV file for each index. Additionally, for simplicity, we only use the closing prices (float), but the API also provides other typical values such as high, low, and open prices.
 
 We declare the function `rs` (_read stock_) to read the closing data of a given index.
 This function uses `0:` to read the files, which takes the delimiter and the schema. In this case, we only want to read the closing price column as a float. Additionally, since the data does not include any reference to the index being read, we need to make a small adjustment to our table to add the index associated with each price.
@@ -69,7 +69,7 @@ We then proceed to create a function called **fCoint** to call our imported func
 fcoint: {@[;1]0f^coint[x;y]`}
 ```
 
-We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
+We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes and finally apply our **fcoint** function to each (`.'`) pair of data lists. **trange** symbolizes the number of working days in the last 4 years.
 
 
 ```q
@@ -77,7 +77,7 @@ trange:4*252
 matrix: fcoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
 ```
 
-Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
+Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favourable. To do that, we can leverage PyKX once again to bring the `heatmap` module to q:
 
 ```q
 pyhm:.pykx.import[`seaborn]`:heatmap
@@ -102,7 +102,7 @@ Our heatmap looks like this:
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
 As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, which is what makes them a perfect fit for our case.
-In this heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
+In this heatmap, they exhibit a vibrant green colour, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
  > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available. We used TickStory to obtain the data.
 
@@ -121,7 +121,7 @@ Let's recap our progress:
 
 Now we're faced with a crucial question: **"How can I benefit from this knowledge?"**
 
-As mentioned earlier, the market is inherently random and doesn't always behave predictably. While NASDAQ100 and SP500 often follow similar trends, their individual values **can sometimes diverge significantly**. For instance, NASDAQ100 may rise while SP500 falls, or vice versa. 
+As mentioned earlier, the market is inherently random and doesn't always behave predictably. While NASDAQ100 and SP500 often follow similar trends, their values **can sometimes diverge significantly**. For instance, NASDAQ100 may rise while SP500 falls, or vice versa. 
 
 However, this presents **an opportunity for profit** because we know that these assets tend to revert to their shared mean over time. If one asset is **overpriced** and likely to decrease, we may consider **selling it** (going short). Conversely, if an asset is **underpriced** and expected to increase, we may consider **buying it** (going long). And that is what we call Pairs Trading.
 
@@ -143,7 +143,7 @@ q)spreads: price_y - price_x
 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
 
-Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability:
+Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize the variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability:
 
 ```q
 q)log price_x
@@ -188,7 +188,7 @@ This precisely meets our objective—a **comprehensive method for representing r
 
 Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick), which publishes the content of a table to its subscribers. It takes two parameters: the name of the table to publish to and the content to be published.
+The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real-time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick), which publishes the content of a table to its subscribers. It takes two parameters: the name of the table to publish to and the content to be published.
 
 ```q
 .z.ts: {.u.pub[`spreads;.stream_pair.gen_pair[]]} 
@@ -223,7 +223,7 @@ Putting everything together and returning a table with the time instant and the 
  }
 ```
 
-By using this approach, we only need to connect KX Dashboards to our publisher by setting up a new connection in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
+By using this approach, we only need to connect KX Dashboards to our publisher by setting up a new connection in the UI. This will allow us to plot our spreads in real-time and we will end up with something like this:
 
 ![SpreadsD](resources/spreads.gif)
 
@@ -254,7 +254,7 @@ We have discussed:
 
 One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
 
-Our goal was to demonstrate the capabilities of KDB+/Q and its potential in implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools in their own work. If you have any questions or need further clarification, don't hesitate to reach out.
+Our goal was to demonstrate the capabilities of KDB+/Q and its potential a implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools in their work. If you have any questions or need further clarification, don't hesitate to reach out.
 
 Special thanks to [...] for [...]
 
