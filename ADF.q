@@ -25,7 +25,7 @@ ones:{x .[;;:;1f]/l where((<=).')l:a cross a:til n:count x}
 fcoint: {@[;1]0f^coint[x;y]`}
 
 // We hardcore read from every .csv the historical data
-syms:`SP500_hist`NASDAQ100_hist`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
+syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
 rs:{([]sym:x;close:first((5#" "),"F";csv) 0:`$":data/stocks/",string[x],".csv")}
 
 // We join every table in one
