@@ -188,26 +188,26 @@ This precisely meets our objective—a **comprehensive method for representing r
 
 Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick). The .u.pub function takes two parameters: the name of the table to publish to and the content to be published, then it publishes the content to the table's subscribers.
+The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick), which publishes the content of a table to its subscribers. It takes two parameters: the name of the table to publish to and the content to be published.
 
 ```q
 .z.ts: {.u.pub[`spreads;.stream_pair.gen_pair[]]} 
 \t 100
 ```
->💡 The objective of this post is not to explain the tick architecture in detail. If you want more information, you can visit Alexander Unterrainer's blog, [DEFCONQ](https://www.defconq.tech/docs/category/kdb-architecture), where he explains the details thoroughly.
+>💡 The objective of this post is not to explain the tick architecture. If you want more information, you can visit Alexander Unterrainer's blog, [DEFCONQ](https://www.defconq.tech/docs/category/kdb-architecture), where he explains the architecture in great depth.
 
 Let's now see how our **.stream_pair.gen_pair** function should be defined. We are only simulating real time; we do not have a 100% real-time product. Therefore, we already have the data loaded into memory and only need to display it one by one. For this, we will use an index *.stream_pair.i** which we will update with each execution of our function. Please keep in mind that if we wanted to run this in a real real-time scenario, the code would need to be modified.
 
 ```q
 .stream_pair.i+:1;
-resX: price_x[.stream_pair.i];
-resY: price_y[.stream_pair.i];
+res_x: price_x[.stream_pair.i];
+res_y: price_y[.stream_pair.i];
 ```
 
 The purpose of this function is to calculate the corresponding price spreads. For this, we will use the spread formula that we already know.
 
 ```q
-s: resY[`bid] - alpha_lr+resX[`bid] * beta_lr;;
+s: res_y[`bid] - alpha_lr+res_x[`bid] * beta_lr;;
 ```
 
 Putting everything together and returning a table with the time instant and the spread, we would get the function:
@@ -215,11 +215,11 @@ Putting everything together and returning a table with the time instant and the 
 ```q
  .stream_pair.gen_pair:{
       .stream_pair.i+:1;
-      resX: price_x[.stream_pair.i];
-      resY: price_y[.stream_pair.i];
-      s: resY[`bid] - alpha_lr+resX[`bid] * beta_lr;
+      res_x: price_x[.stream_pair.i];
+      res_y: price_y[.stream_pair.i];
+      s: res_y[`bid] - alpha_lr+res_x[`bid] * beta_lr;
       enlist `dt`spread`mean!
-            ("p"$(resX[`dt]);"f"$s;0f);  
+            ("p"$(res_x[`dt]);"f"$s;0f);  
  }
 ```
 
