@@ -53,7 +53,7 @@ One such library is **statsmodels**, a prominent tool in Python for statistical 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-As we saw in the introduction, we are working within a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a utility to store the closing prices of our indices in our hard database (HDB) at the end of the day.
+As we saw in the introduction, we are working within a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a tool to store the closing prices of our indices in our historical database (HDB) at the end of the day.
 
 Therefore, we simply need to execute a straightforward query on the HDB to read these data and load them into memory. To achieve this, we define the function `rs`, which takes a date range and the indices for which we want to retrieve data. We can then use the **qSQL syntax** (very similar to SQL) to obtain the desired data.
 
@@ -61,7 +61,7 @@ Therefore, we simply need to execute a straightforward query on the HDB to read 
 rs:{[id;ed;syms]select from prices where date within (id;ed),sym in syms}
 ```
 
-Now we simply need to pass this function with the necessary parameters to our HDB. To do this, we open (`hopen`) a connection to our HDB process, obtaining a handle. To communicate with the process, we pass a list to the handle with the first element being the function and the subsequent elements being the parameters, once we get our data we finally group (`xgroup`) by index. Finally, let's not forget to close (`hclose`) the connection to HDB.
+Now we simply need to send this function with the necessary parameters to our HDB. To do this, we open (`hopen`) a connection to our HDB process, obtaining a handle. To communicate with the process, we pass a list to the handle with the first element being the function and the subsequent elements being the parameters, once we get our data we finally group (`xgroup`) by index. Finally, let's not forget to close (`hclose`) the connection to HDB.
 
 ```q
 syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
@@ -72,7 +72,7 @@ t:`sym xgroup h(rs;ed-trange;ed;syms)
 hclose h
 ```
 
-We then proceed to create a function called **fCoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
+We then proceed to create a function called **fcoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
 
 ```q
 fcoint: {@[;1]0f^coint[x;y]`}
@@ -88,6 +88,7 @@ matrix: fcoint .' 0f^@\:[;`close](@/:[t]')syms cross syms
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module to q:
 
 > 💡 We could have created a dashboard to plot the heatmap using KX Dashboard, but in this case, it is simpler and faster to use PyKX and plot as we would in Python, with minor modifications to the syntax.
+
 ```q
 pyhm:.pykx.import[`seaborn]`:heatmap
 pyhm[pvalues;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
@@ -111,7 +112,7 @@ Our heatmap looks like this:
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
 As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, which is what makes them a perfect fit for our case.
-In this heatmap, they exhibit a vibrant green color, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
+In this heatmap, they exhibit a vibrant green colour, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
 
  > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available. We used TickStory to obtain the data.
 
@@ -190,7 +191,9 @@ The most common method to find the best relationships (alpha and beta) is the le
 $$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha)^2$$
 
 After taking partial derivatives with respect beta and setting to zero, and then solving, we can arrive at this formula:
+
 $$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$$
+
 Which we can see implemented in the following functions:
 
 ```q
@@ -204,20 +207,20 @@ Now, following the same steps as before but for alpha, we arrive at:
 
 $$\alpha = \bar y - \beta \cdot \bar x$$
 
-Which is implemented in the following lines of code:
+Which is implemented in the following line of code:
 
 ```q
 alphaF: {avg[y]-betaF[x;y]*avg[x]}
 ```
 
-Now we simply need to apply these functions to find the optimal alpha and beta on the historical prices (we took from HDB) of the indices we choose.
+Now we simply need to apply these functions to find the optimal alpha and beta on the historical prices (which we took from HDB) of the indices we choose.
 
 ```q
 beta_lr:betaF[t[`SP500]`close;t[`NASDAQ100]`close]
 alpha_lr:alphaF[t[`SP500]`close;t[`NASDAQ100]`close]
 ```
 
-This precisely meets our objective—a **comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
+This precisely meets one of our objectives: **a comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
 
 ## Real-Time Pair Party
@@ -226,7 +229,7 @@ Now that we have selected a pair of cointegrated indices and understand how to c
 
 To do this, we need to focus on the Real Time Pair Trading (RPT), which will subscribe to the tickerplant, receiving the price data (`prices`) of the two indices we choose based on our ADF Test. Additionally, we will connect to the HDB (as shown in the ADF testing) to calculate the alpha (`alpha_lr`) and beta (`beta_lr`) of the linear regression. Subsequently, the RPTS will publish the regression spreads to the KX Dashboard so we can view it in real time. Let's take a quick look at the RPT script.
 
-The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick). The .u.pub function takes two parameters: the name of the table to publish to and the content to be published, then it publishes the content to the table's subscribers.
+The first step is to declare a `.z.ts` function, which will be called automatically every x milliseconds, configurable with `\t`. In our case, it will be called every 100 milliseconds. This function will publish the spreads in real time to a table using the `.u.pub` (publish) function from the [KDB+ tick architecture](https://github.com/KxSystems/kdb-tick). The `.u.pub` function takes two parameters: the name of the table to publish to and the content to be published, then it publishes the content to the table's subscribers.
 
 ```q
 .z.ts: {.u.pub[`spreads;update priceY - alpha_lr+priceX * beta_lr from prices]} 
@@ -265,7 +268,7 @@ We have discussed:
 
 One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
 
-Our goal was to demonstrate the capabilities of KDB+/Q and its potential in implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools in their own work. If you have any questions or need further clarification, don't hesitate to reach out.
+Our goal was to demonstrate the capabilities of KDB+/Q and its potential in implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools at their own work. If you have any questions or need further clarification, don't hesitate to reach out.
 
 Special thanks to [...] for [...]
 
