@@ -36,47 +36,55 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 ### ADF testing
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In kdb/q we just have to declare a variable containing every index and generate the cartesian product (`cross`)of this indexes.
+
+```q
+syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
+pairs: syms cross syms
+```
+
+In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
 
 This statistical test is a **hypothesis test**, where we use our data to see if we can accept or reject a hypothesis. In our case, the hypothesis is whether the time series is non-stationary. To determine this, we use **p-values**.
 
 **P-values** help us decide whether to reject the null hypothesis. If the p-value is low, it indicates that we can reject the hypothesis that the time series is non-stationary, suggesting that our assets are cointegrated. The lower the p-value, the greater the confidence in rejecting the null hypothesis. It is very common to use a threshold of 0.05 on the p-value to reject hypotheses.
 
-For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q would be time-consuming and prone to errors. Although an implementation of the ADF test in KDB+/Q would be more efficient and faster, the effort required would outweigh the benefits. Therefore, we rely on PyKX to streamline the process by leveraging relevant libraries from the Python ecosystem.
+For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in Q would be time-consuming and prone to errors. Although an implementation of the ADF test in KDB+/Q would be more efficient and faster, the effort required would outweigh the benefits for this particular case where performance isn't critical. Therefore, we rely on PyKX to streamline the process by leveraging relevant libraries from the Python ecosystem.
+
+```q
+system"l pykx.q"
+```
 
 One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+
+We can proceed to create a function called **fcoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
+
+```q
+coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
+fcoint:{@[;1]0f^coint[x;y]`}
+```
 
 As we saw in the introduction, we are working in a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a tool to store the closing prices of our indices in our historical database (HDB) at the end of the day.
 
 Therefore, we simply need to execute a straightforward query on the HDB to read these data and load them into memory. To achieve this, we define the function `rs`, which takes a date range and the indices for which we want to retrieve data. We can then use the **qSQL syntax** (very similar to SQL) to obtain the desired data.
 
 ```q
-rs:{[id;ed;syms]select from prices where date within (id;ed),sym in syms}
+t:`sym xgroup hdb(query_prices;trange;syms)
+:{[tr;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
 ```
 
 Now we simply need to send this function with the necessary parameters to our HDB. To do this, we open (`hopen`) a connection to our HDB process, obtaining a handle. To communicate with the process, we pass a list to the handle with the first element being the function and the subsequent elements being the parameters, once we get our data we finally group (`xgroup`) by index. Finally, let's not forget to close (`hclose`) the connection to HDB.
 
 ```q
-syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
-ed:2024.03.30    / end_date
 tr:4*365         / date range     
-h:hopen port
-t:`sym xgroup h(rs;ed-trange;ed;syms)
+hdb:hopen port
+t:`sym xgroup hdb(query_prices;tr;syms)
 hclose h
 ```
 
-We then proceed to create a function called **fcoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
+ In our case we are going to use closing prices to our ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we take (`#`) the last **tr** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists.
 
 ```q
-system"l pykx.q"
-coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
-fcoint:{@[;1]0f^coint[x;y]`}
-```
-
-We generate all combinations (`cross`) of indexes to see which pair is most cointegrated. Then, we index (`@`) each pair in our table. Additionally, we take (`#`) the last **trange** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists.
-
-```q
-trange:4*252
 matrix:fcoint .' 0f^@\:[;`close](@/:[t]')syms cross syms
 ```
 
