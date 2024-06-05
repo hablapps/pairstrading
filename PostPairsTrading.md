@@ -2,7 +2,7 @@
 
 KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
 
-Our objective is to provide **an implementation of a pair trading strategy in q**, which includes identifying cointegrated indexes, implementing a model to calculate spreads, developing it to work in real-time, and integrating it with the tick architecture.
+Our objective is to provide **an implementation of a Pair Trading strategy in q**, which includes identifying cointegrated indexes, implementing a model to calculate spreads, making it work in real-time, and integrating it with the tick architecture.
 
 We'll proceed methodically, ensuring each question leads to a comprehensive answer. To start, we'll contextualize our current situation by addressing key questions such as **"What do we know about the market and how can we benefit from it?"**. This will lay the foundation for constructing a real-time simulated environment on Pairs Trading that will exemplify everything we have explained thus far.
 
@@ -12,7 +12,7 @@ We will be covering the following aspects using the KDB tick architecture as a b
 
 ![Architecture](resources/general-architecture.png)
 
-If this is the first time you see the KDB/Q tick architecture, **DONT PANIC!** The tick architecture is designed to handle high-frequency trading data efficiently. At its heart is the tickerplant, a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The tickerplant ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, ensuring that the tickerplant receives accurate and up-to-date information. This architecture ensures seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
+If this is the first time you see the KDB+/Q tick architecture, **DONT PANIC!** The tick architecture is designed to handle high-frequency trading data efficiently. At its heart is the tickerplant, a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The tickerplant ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the tickerplant receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
 
 To develop the pair trading strategy, we have added a couple of new components to the default architecture. So, with all that said, let's get to work!
 
@@ -36,7 +36,7 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 ## Identifying cointegrated indexes
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In kdb/q we just have to declare a variable containing every index and generate the cartesian product (`cross`)of this indexes.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`) of this indexes.
 
 ```q
 syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
@@ -64,7 +64,6 @@ coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 fcoint:{@[;1]0f^coint[x;y]`}
 ```
 
-<<TODO: mention real-time in the introduction>>
 As we saw in the introduction, we are working in a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a tool to store the closing prices of our indices in our historical database (HDB) at the end of the day.
 
 Therefore, we simply need to execute a straightforward query on the HDB to read these data and load them into memory. To achieve this, we define the function `rs`, which takes a date range and the indices for which we want to retrieve data. We can then use the **qSQL syntax** (very similar to SQL) to obtain the desired data.
@@ -210,7 +209,7 @@ Which is implemented in the following line of code:
 alphaF: {avg[y]-betaF[x;y]*avg[x]}
 ```
 
-Finally, we can encapsulate both parameters fitting in just one function `lr_fit`. This function only has to apply each fit function to input data
+Finally, we can encapsulate both parameters in just one function called `lr_fit`. This function only has to apply each fit function to our input data.
 
 ```q
 lr_fit:{(alphaF;betaF).\:(x;y)}
@@ -230,23 +229,23 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 
 Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
 
-To do this, we need to focus on the Real Time Pair Trading Subscriber (RPT). As can be seen in the diagram, this component receives 3 inputs.
+To do this, we need to focus on the Real-Time Pair Trading Subscriber (RPT). As can be seen in the diagram, this component receives 3 inputs.
 
 Let's start with the easy part: first, we receive which pair of indexes we have chosen in the previous step (this step, in our case, is done AD-HOC since, as we mentioned, we have chosen these two indices not only because of their cointegration but also because they are indices whose tick data is public).
 
-The next step is to receive the data for this pair of indices. For this, we need to subscribe to the tickerplant using the tick architecture function `.u.sub`. In this function, we need to specify which table and which symbols (indexes in our case) we want to subscribe to. This information needs to be passed through the connection to the tickerplant. 
+The next step is to receive the data for this pair of indices. For this, we need to subscribe to the tickerplant using the tick architecture function `.u.sub`. Here, we need to specify which table and which symbols (indexes in our case) we want to subscribe to. This information needs to be passed through the connection to the tickerplant. 
 
-> 💡 `.z.x` in the KDB+/q language is an environment variable that stores the command-line arguments passed to a q script.
+> 💡 `.z.x` in the KDB+/Q language is an environment variable that stores the command-line arguments passed to a q script.
 
 ```q
 (hopen `$":",.z.x 0)"(.u.sub[`quote;`SP500`NASDAQ100])"
 ```
 
-> 💻 Basically, what `.u.sub` does is pass the information about our process to the tickerplant and add it to its registers. By using `.u.sub`, we inform the tickerplant of our subscription interest, enabling us to receive real-time updates for the specified indices.
+> 💻 Basically, what `.u.sub` does is transfer the information about our process to the tickerplant and add it to its registers. By using `.u.sub`, we inform the tickerplant of our subscription interest, enabling us to receive real-time updates for the specified indices.
 
 Additionally, we will connect to the HDB (as shown in the ADF testing) to calculate the alpha (`alpha_lr`) and beta (`beta_lr`) of the linear regression.
 
-We would then only need two things, firstly to see how the tickerplant sends (or receives) this data, and secondly to calculate the spread given the data and then publish it again so that the Dashboard can read and plot it. Let's see that we can really do all this in one line of code in a very simple way.
+We would then only need two things, first to see how the tickerplant sends (or receives) this data, and second to calculate the spread given the data and then publish it again so that the Dashboard can read and plot it. Let's see that we can really do all this in one line of code in a very simple way.
 
 The first thing we need to know is how tickerplant sends the data. What it does is to send a call to an `upd` function (that we must have declared in our process) with two arguments, the first one is the name of the table to which the incoming data belongs as the second argument. Then the first thing to do is to declare an `upd` function. What this function should do is to publish in a table (`spread`) the spreads of the linear regression. For this we will use the `u.pub` function of the tick architecture.
 
