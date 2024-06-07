@@ -1,22 +1,15 @@
 # A Match Made in Trading: Step-by-Step Pairs Trading Guide
 
-KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of Pairs Trading and its implementation in Q, offering a comprehensive guide to one of the most popular strategies in the trading world.
+KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of _Pairs Trading_, one of the most popular strategies in the trading world, and its implementation in Q.
 
-Our objective is to provide **an implementation of a Pair Trading strategy in q**, which includes identifying cointegrated indexes, implementing a model to calculate spreads, making it work in real-time, and integrating it with the tick architecture.
+In order to achieve this exploration, we have outlined the following steps:
+* Identifying cointegrated indexes, i.e., related pairs
+* Implementing a model to calculate their spreads
+* Visualizing the approach in real-time
 
-We'll proceed methodically, ensuring each question leads to a comprehensive answer. To start, we'll contextualize our current situation by addressing key questions such as **"What do we know about the market and how can we benefit from it?"**. This will lay the foundation for constructing a real-time simulated environment on Pairs Trading that will exemplify everything we have explained thus far.
+We will use the [_Tick Architecture_](https://github.com/KxSystems/kdb-tick), the typical setup found in kdb+ systems, to introduce, contextualize and guide each step. As we acknowledge that the typical reader is a quant interested in learning the virtues of q, a concise introduction to this architecture will be provided. We have also aimed to briefly introduce pairs trading so that other developers can follow and benefit from this text. Please, feel free to skip the following section if you are familiar with it.
 
-Whether taking a technical or quantitative approach, these insights will provide valuable foundations for constructing this algorithm effectively.
-
-We will be covering the following aspects using the KDB tick architecture as a base:
-
-![Architecture](resources/general-architecture.png)
-
-If this is the first time you see the KDB+/Q tick architecture, **DONT PANIC!** The tick architecture is designed to handle high-frequency trading data efficiently. At its heart is the tickerplant, a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The tickerplant ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the tickerplant receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
-
-To develop the pair trading strategy, we have added a couple of new components to the default architecture. So, with all that said, let's get to work!
-
-## In the untamed realm of the market
+## What is Pairs Trading?
 
 The market has often been described as a **stochastic** (a term which essentially means random) **process** where prices fluctuate irregularly. However, amidst this apparent randomness, we observe that **certain assets move in tandem** due to their inherent relationships. 
 
@@ -29,14 +22,25 @@ The concept we're referring to is **cointegration** (although there are other me
 > 💡 Which should not be confused with correlation; cointegration is a statistical property of two-time series, indicating a long-term relationship between them despite short-term fluctuations. Cointegrated series move together over time, sharing a common stochastic drift. On the other hand, correlation measures the strength and direction of the linear relationship between two variables at a specific point in time. While correlation captures the degree of association between variables, cointegration reflects a deeper, underlying relationship that persists over time.
 
 Hence, we're interested in **cointegrated assets**, which are assets that exhibit the following characteristics:
+* They have a similar trend, meaning the difference between both assets maintains a constant mean, and this difference fluctuates around that same mean.
+* This inherent relationship persists in the long run, meaning that our series is not dependent on time.
+Before delving into this search for cointegrated pairs, let me introduce you the tick architecture.
 
-1. They have a similar trend, meaning the difference between both assets maintains a constant mean, and this difference fluctuates around that same mean.
+## What is the Tick Architecture?
 
-2. This inherent relationship persists in the long run, meaning that our series is not dependent on time.
+The tick architecture is designed to handle high-frequency trading data efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
+
+![Architecture](resources/general-architecture.png)
+
+To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding cointegrated pairs.
 
 ## Identifying cointegrated indexes
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated or not**. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`) of this indexes.
+This section focuses on the ADF Test component. It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
+![Arch 1st Part](resources/general-architecture-top.png)
+Let's move on to the code we need to implement it.
+
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`) of this indexes.
 
 ```q
 syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
@@ -64,28 +68,27 @@ coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
 fcoint:{@[;1]0f^coint[x;y]`}
 ```
 
-As we saw in the introduction, we are working in a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a tool to store the closing prices of our indices in our historical database (HDB) at the end of the day.
-
-Therefore, we simply need to execute a straightforward query on the HDB to read these data and load them into memory. To achieve this, we define the function `rs`, which takes a date range and the indices for which we want to retrieve data. We can then use the **qSQL syntax** (very similar to SQL) to obtain the desired data.
-
+As we saw in the introduction, we are working in a tick architecture environment. This means that, in addition to receiving real-time prices for our indices, this architecture provides a tool to store the closing prices of our indices in our HDB at the end of the day. As obvious, establishing a connection with HDB is required:
 ```q
-t:`sym xgroup hdb(query_prices;trange;syms)
-:{[tr;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
-```
-
-Now we simply need to send this function with the necessary parameters to our HDB. To do this, we open (`hopen`) a connection to our HDB process, obtaining a handle. To communicate with the process, we pass a list to the handle with the first element being the function and the subsequent elements being the parameters, once we get our data we finally group (`xgroup`) by index. Finally, let's not forget to close (`hclose`) the connection to HDB.
-
-```q
-tr:4*365         / date range     
 hdb:hopen port
-t:`sym xgroup hdb(query_prices;tr;syms)
-hclose h
 ```
+As can be seen, we assume that the HDB process is listening at a given `port` in the local machine. We just `hopen` a connection with it and get the `hdb` handle.
 
- In our case we are going to use closing prices to our ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we take (`#`) the last **tr** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists.
-
+Then, we define the query that we want the HDB to run. In this case, we declare `rs`, which takes the (n)umber of historic days and the involved (symb)ol(s) for which we want to retrieve data, as arguments.
 ```q
-matrix:fcoint .' 0f^@\:[;`close](@/:[t]')syms cross syms
+rs:{[tr;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
+```
+The body of the function might seem pretty familiar to the SQL practicioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It might also interesting to say that `.z.d` represents the current date, so we are interested on the `n` days back from today.
+
+Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: keeping computations as close to the data as possible. Instead of requesting data and then applying a computation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
+```q
+t:`sym xgroup hdb(query_prices;4*365;syms)
+```
+To communicate with the process, we pass a list to the `hdb` handle with the first element being the function and the subsequent elements being the arguments (last 4 years & involved indexes). Once we get our data we finally `xgroup` by index.
+
+In our case, we are going to use closing prices to feed the ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we take (`#`) the last **tr** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists.
+```q
+matrix:fcoint .' 0f^@\:[;`close](@/:[t]') pairs
 ```
 
 Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module from `seaborn` a prominent data visualization library in the Python ecosystem to q:
@@ -104,29 +107,17 @@ pyshow:.pykx.import[`matplotlib.pyplot]`:show
 pyshow[::]
 ```
 
-Given our following assets:
-
-| SP500 | NASDAQ100 |   BFX   |  FCHI  |  GDAXI  |    HSI    |  KS11   |  MXX   |  N100  | N225  |  NYA  |  RUT  | STOXX  |
-| :---: | :-------: | :-----: | :----: | :-----: | :-------: | :-----: | :----: | :----: | :---: | :---: | :---: | :----: |
-|  USA  |    USA    | Belgium | France | Germany | Hong Kong | S.Korea | Mexico | Europe | Japan |  USA  |  USA  | Europe |
-
-Our heatmap looks like this:
+The resulting heatmap looks like this:
 
 ![ADF heatmap](https://github.com/hablapps/pairstrading/blob/5-Post/resources/ADFgif.gif?raw=true)
 
-As we can observe, there are several cointegrated indices, but our attention will be drawn towards the **NASDAQ100 and SP500** synergy. Both of these indices belong to the American market and share numerous characteristics. They encompass American companies traded within the same scenario, which is what makes them a perfect fit for our case.
-In this heatmap, they exhibit a vibrant green colour, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates.
+We will drawn our attention towards the **NASDAQ100* and **SP500** synergy. They exhibit a vibrant green colour, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates. This is no surprise since they both belong to the American market and share numerous characteristics.
 
- > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the tick data for their prices is publicly available. We used TickStory to obtain the data.
+ > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the detailed intraday tick data for their prices is publicly available (TickStory) which we will require for the real-time setting that we'll present later on.
 
 ![Prices](resources/cointegration.png)
 
-
-The plotted graph displays the prices of both indexes together, providing a clearer comparison that showcases the cointegration between them. The blue line represents SP500, and NASDAQ100 is represented by the green line. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship. This graph was generated by [KX Dashboard](https://code.kx.com/dashboards/), which receives data from the Pairs Trading process and renders visualizations.
-
-Overall in this section we explained how the first part of our diagram works. We first discovered that, even in the randomness of the market, some assets show some similar movements. Then, based on that information and using the historical data from our tick architecture, we used the cointegration and ADF test to pinpoint a specific pair of them for our analysis: NASDAQ100 and SP500.
-
-![Arch 1st Part](resources/general-architecture-top.png)
+The plotted graph displays the prices of both indexes together, providing a clearer comparison that showcases the cointegration between them. The blue and green lines represent SP500 and NASDAQ100, respectively. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indices tend to move together as time goes on, maintaining a stable relationship. This graph was generated by [KX Dashboard](https://code.kx.com/dashboards/), which receives data from the Pairs Trading process and renders visualizations.
 
 As mentioned earlier, the market is inherently random and doesn't always behave predictably. While NASDAQ100 and SP500 often follow similar trends, their individual values **can sometimes diverge significantly**. For instance, NASDAQ100 may rise while SP500 falls, or vice versa. 
 
@@ -134,9 +125,11 @@ However, this presents **an opportunity for profit** because we know that these 
 
 > 💡 This strategy possesses financial characteristics: our **profitability remains unaffected by the broader market trends**, as our focus lies solely on the disparity between the two assets. It's about relative movements rather than absolute ones; we're indifferent to whether prices are rising or falling. This quality defines it as a **neutral market strategy**.
 
+As you might guess, our next task is to build the model that helps us determine whether an index is actually overpriced or underpriced.
+
 ## Determining how to calculate the spreads
 
-After this initial market assesment, we can move on to coding the sctual Pair Trading model that calculates the spreads. The first approach we may try could simply be to subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
+After this initial market assesment, we can move on to coding the actual Pair Trading model that calculates the spreads. The first approach we may try could simply be to subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
 
 Indeed, just subtracting the prices of two assets, as in $price_y−price_x$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
@@ -227,33 +220,19 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 
 ## Real-time spread calculation
 
-Now that we have selected a pair of cointegrated indices and understand how to calculate their relationships, let's see how we can create a real-time pair trading scenario.
+Now that we have selected a pair of cointegrated indices and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can apply the model to produce the spreads, which will then be sent to the dashboard.
+![Arch-bottom](resources/general-architecture-bottom.png)
 
-To do this, we need to focus on the Real-Time Pair Trading Subscriber (RPT). As can be seen in the diagram, this component receives 3 inputs.
-
-Let's start with the easy part: first, we receive which pair of indexes we have chosen in the previous step (this step, in our case, is done AD-HOC since, as we mentioned, we have chosen these two indices not only because of their cointegration but also because they are indices whose tick data is public).
-
-The next step is to receive the data for this pair of indices. For this, we need to subscribe to the tickerplant using the tick architecture function `.u.sub`. Here, we need to specify which table and which symbols (indexes in our case) we want to subscribe to. This information needs to be passed through the connection to the tickerplant. 
-
-> 💡 `.z.x` in the KDB+/Q language is an environment variable that stores the command-line arguments passed to a q script.
-
+Real-time components can manifest their interest for a particular table and for a subset of symbols. As a result from previous steps, we know we are interested on the quotes for SP500 and NASDAQ100:
 ```q
-(hopen `$":",.z.x 0)"(.u.sub[`quote;`SP500`NASDAQ100])"
+tp"(.u.sub[`quote;`SP500`NASDAQ100])"
 ```
-
-> 💻 Basically, what `.u.sub` does is transfer the information about our process to the tickerplant and add it to its registers. By using `.u.sub`, we inform the tickerplant of our subscription interest, enabling us to receive real-time updates for the specified indices.
-
-Additionally, we will connect to the HDB (as shown in the ADF testing) to calculate the alpha (`alpha_lr`) and beta (`beta_lr`) of the linear regression.
-
-We would then only need two things, first to see how the tickerplant sends (or receives) this data, and second to calculate the spread given the data and then publish it again so that the Dashboard can read and plot it. Let's see that we can really do all this in one line of code in a very simple way.
-
-The first thing we need to know is how tickerplant sends the data. What it does is to send a call to an `upd` function (that we must have declared in our process) with two arguments, the first one is the name of the table to which the incoming data belongs as the second argument. Then the first thing to do is to declare an `upd` function. What this function should do is to publish in a table (`spread`) the spreads of the linear regression. For this we will use the `u.pub` function of the tick architecture.
-
-> 💻 The `.u.pub` function takes two parameters: the name of the table to publish to and the content to publish, then it publishes the content to the subscribers of the table, again calling the `upd` method that should be declared in the subscriber process.
-
+Assume that `tp` is just a handle to the TP process, similar to `hdb` from previous sections. Basically, what `.u.sub` does is registering the RPT handle in the TP so it can later notify the recently subscribed component about new events. To do so, it assumes that the subscriber has defined an `upd` function:
 ```q
 upd:{.u.pub[`spread;([]time:1#y`time;spread:sp . y`bid)]};
 ```
+This function essentially takes the current prices of SP500 and NASDAQ100 as input, calculates the spread, and sends it to its subscribers. In this sense, the dashboard should subscribe to the RPT in a similar fashion as the RPT subscribed to the TP.
+> We have adapted our feed handler so that it always publishes pairs of cointegrated ticks, in order to simplify the implementation of RPT.
 
 We simply need to declare an `sp` function that calculates the spread given the prices, but this is something we already know how to do.
 
@@ -270,8 +249,6 @@ And there we have it! **A perfectly plotted spread series in real-time**, ready 
 
 Up until this point in this section, we have taken a look at how we, having previously identified a pair of compatible assets, could reliably calculate a meaningful spread and implemented it in a simulated real-time scenario. Thanks to KX Dashboards we were also able to create a simple plot to show all this information in a way that's easily understandable.
 
-![Arch-bottom](resources/general-architecture-bottom.png)
-
 To finish, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows.
 
 A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
@@ -282,20 +259,19 @@ In this instance, we can see that the spread (purple line) is positive and above
 
 > 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series.
 
-## Conclusion and Future Work
+## Conclusion
 
-In this post, we have provided a comprehensive overview of Pairs Trading, covering its implementation and intricacies in KDB+/Q.
+In this post, we have provided a comprehensive overview of the implementation of the Pairs Trading strategy in KDB+/Q, contextualized within the Tick Architecture. Here are some key takeaways:
+* The Tick Architecture allows us to handle both historical and real-time data.
+* By leveraging historical data, we were able to easily identify cointegrated pairs, reusing libraries from the Python ecosystem via PyKX when needed.
+* Q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
+* Integrating a real-time component and connecting it with a dashboard is simple and efficient.
 
-We have discussed:
+More generally, and although we couldn't delve into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process large amounts of data in a very short time with a small memory footprint, allowing us to monitor thousands of pairs simultaneously. Secondly, Q code is highly concise, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
 
-1. An examination of cointegrated assets within the market.
-2. Multiple Augmented Dickey-Fuller (ADF) tests on real assets.
-3. An introduction to the pairs trading strategy itself.
-4. A clear and guided explanation of spread calculation and interpretation in KDB+/Q.
+## Future Work
 
 One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
-
-Our goal was to demonstrate the capabilities of KDB+/Q and its potential in implementing a simplified yet powerful financial strategy. By doing so, we hope to make these concepts more accessible and empower individuals to leverage these tools at their own work. If you have any questions or need further clarification, don't hesitate to reach out.
 
 Special thanks to [...] for [...]
 
