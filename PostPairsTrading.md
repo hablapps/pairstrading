@@ -76,15 +76,17 @@ As can be seen, we assume that the HDB process is listening at a given `port` in
 
 Then, we define the query that we want the HDB to run. In this case, we declare `rs`, which takes the (n)umber of historic days and the involved (symb)ol(s) for which we want to retrieve data, as arguments.
 ```q
-rs:{[tr;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
+rs:{[n;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
 ```
-The body of the function might seem pretty familiar to the SQL practicioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It might also interesting to say that `.z.d` represents the current date, so we are interested on the `n` days back from today.
+The body of the function might seem pretty familiar to the SQL practicioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It is also worth noting that `.z.d` represents the current date, so we are interested in retrieving data from the `n` days back from today.
 
 Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: keeping computations as close to the data as possible. Instead of requesting data and then applying a computation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
 ```q
 t:`sym xgroup hdb(query_prices;4*365;syms)
 ```
 To communicate with the process, we pass a list to the `hdb` handle with the first element being the function and the subsequent elements being the arguments (last 4 years & involved indexes). Once we get our data we finally `xgroup` by index.
+
+> 💡 Once we have finished our communication with another process, we should close the connection, as in `hclose hdb`.
 
 In our case, we are going to use closing prices to feed the ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we take (`#`) the last **tr** days of data for both indexes, and finally apply our **fcoint** function to each (`.'`) pair of data lists.
 ```q
@@ -231,7 +233,7 @@ Assume that `tp` is just a handle to the TP process, similar to `hdb` from previ
 ```q
 upd:{.u.pub[`spread;([]time:1#y`time;spread:sp . y`bid)]};
 ```
-This function essentially takes the current prices of SP500 and NASDAQ100 as input, calculates the spread, and sends it to its subscribers. In this sense, the dashboard should subscribe to the RPT in a similar fashion as the RPT subscribed to the TP.
+This function essentially takes the current prices of _SP500_ and _NASDAQ100_ as input, calculates the spread, formats them as a table (along with the timestamp) and sends it to its subscribers by means of `.u.pub`. In this sense, the dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (`.u.sub`). However, in this case, the function is invoked automatically by the dashboard when a component selects the `spread` table from the RPT process as the source.
 > We have adapted our feed handler so that it always publishes pairs of cointegrated ticks, in order to simplify the implementation of RPT.
 
 We simply need to declare an `sp` function that calculates the spread given the prices, but this is something we already know how to do.
