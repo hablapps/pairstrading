@@ -29,17 +29,17 @@ Before diving into this search for cointegrated pairs, let me introduce you the 
 
 ## What is the Tick Architecture?
 
-The tick architecture is designed to handle high-frequency trading data efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
+The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
 
 ![Architecture](resources/general-architecture.png)
 
-To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding cointegrated pairs.
+To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, ML Model, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding cointegrated pairs.
 
 ## Identifying cointegrated indexes
 
 Let's focus on the ADF Test component. It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
 
-![Arch 1st Part](resources/general-architecture-top.png)
+![Arch 1st Part](resources/general-architecture-adf.png)
 
 Let's move on to the code we need to implement it.
 
@@ -230,7 +230,7 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 
 Now that we have selected a pair of cointegrated indices and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can apply the model to produce the spreads, which will then be sent to the dashboard.
 
-![Arch-bottom](resources/general-architecture-bottom.png)
+![Arch-bottom](resources/general-architecture-rpt.png)
 
 
 Real-time components can manifest their interest for a particular table and for a subset of symbols. As a result from previous steps, we know we are interested on the quotes for SP500 and NASDAQ100:
