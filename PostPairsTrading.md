@@ -2,7 +2,7 @@
 
 KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of _Pairs Trading_, one of the most popular strategies in the trading world, and its implementation in Q.
 
-In order to achieve this exploration, we have outlined the following steps:
+In order to achieve this, we have outlined the following steps:
 * Identifying cointegrated indexes, i.e., related pairs
 * Implementing a model to calculate their spreads
 * Visualizing the approach in real-time
