@@ -83,7 +83,8 @@ Then, we define the query that we want the HDB to run. In this case, we declare 
 ```q
 rs:{[n;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
 ```
-The body of the function might seem pretty familiar to the SQL practicioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It is also worth noting that `.z.d` represents the current date, so we are interested in retrieving data from the `n` days back from today.
+The body of the function might seem pretty familiar to the SQL practitioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It is also worth noting that `.z.d` represents the current date, so we are interested in retrieving data from the `n` days back from today.
+
 
 Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: keeping computations as close to the data as possible. Instead of requesting data and then applying a computation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
 ```q
