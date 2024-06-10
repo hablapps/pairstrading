@@ -37,7 +37,8 @@ To develop the pair trading strategy, we have added a couple of new components t
 
 ## Identifying cointegrated indexes
 
-This section focuses on the ADF Test component. It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
+Let's focus on the ADF Test component. It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
+
 ![Arch 1st Part](resources/general-architecture-top.png)
 Let's move on to the code we need to implement it.
 
