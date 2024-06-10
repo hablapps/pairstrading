@@ -40,7 +40,9 @@ To develop the pair trading strategy, we have added a couple of new components t
 Let's focus on the ADF Test component. It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
 
 ![Arch 1st Part](resources/general-architecture-top.png)
+
 Let's move on to the code we need to implement it.
+
 
 Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`) of this indexes.
 
