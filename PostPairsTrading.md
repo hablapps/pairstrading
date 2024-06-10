@@ -227,7 +227,9 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 ## Real-time spread calculation
 
 Now that we have selected a pair of cointegrated indices and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can apply the model to produce the spreads, which will then be sent to the dashboard.
+
 ![Arch-bottom](resources/general-architecture-bottom.png)
+
 
 Real-time components can manifest their interest for a particular table and for a subset of symbols. As a result from previous steps, we know we are interested on the quotes for SP500 and NASDAQ100:
 ```q
