@@ -24,7 +24,8 @@ The concept we're referring to is **cointegration** (although there are other me
 Hence, we're interested in **cointegrated assets**, which are assets that exhibit the following characteristics:
 * They have a similar trend, meaning the difference between both assets maintains a constant mean, and this difference fluctuates around that same mean.
 * This inherent relationship persists in the long run, meaning that our series is not dependent on time.
-Before delving into this search for cointegrated pairs, let me introduce you the tick architecture.
+
+Before diving into this search for cointegrated pairs, let me introduce you the tick architecture.
 
 ## What is the Tick Architecture?
 
