@@ -78,7 +78,8 @@ hdb:hopen port
 ```
 As can be seen, we assume that the HDB process is listening at a given `port` in the local machine. We just `hopen` a connection with it and get the `hdb` handle.
 
-Then, we define the query that we want the HDB to run. In this case, we declare `rs`, which takes the (n)umber of historic days and the involved (symb)ol(s) for which we want to retrieve data, as arguments.
+Then, we define the query that we want the HDB to run. In this case, we declare `rs`, which takes the (n)umber of historic days and the involved (sym)bol(s) for which we want to retrieve data, as arguments.
+
 ```q
 rs:{[n;syms]select from prices where date within (.z.d-tr;.z.d),sym in syms}
 ```
