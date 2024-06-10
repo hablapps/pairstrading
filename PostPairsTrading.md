@@ -276,7 +276,8 @@ In this post, we have provided a comprehensive overview of the implementation of
 * Q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
 * Integrating a real-time component and connecting it with a dashboard is simple and efficient.
 
-More generally, and although we couldn't delve into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process large amounts of data in a very short time with a small memory footprint, allowing us to monitor thousands of pairs simultaneously. Secondly, Q code is highly concise, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
+More generally, and although we couldn't get into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process large amounts of data in a very short time with a small memory footprint, allowing us to monitor thousands of pairs simultaneously. Secondly, Q code is highly concise, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
+
 
 ## Future Work
 
