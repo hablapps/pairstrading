@@ -15,9 +15,9 @@ The market has often been described as a **stochastic** (a term which essentiall
 
 For instance, it's logical to expect that if the prices of petrol rise, the prices of cars should also rise. This is because auto companies rely on petrol for their operations, indicating an interconnectedness between the two. Over the long run, they tend to follow similar trends, **reflecting their underlying relationship**.
 
-Pair trading leverages this phenomenon by identifying two assets whose prices exhibit a stable relationship over time. When these prices deviate from their historical relationship, a trading opportunity arises. The strategy involves buying the undervalued asset (the one that has fallen more than expected) and selling the overvalued asset (the one that has risen more than expected). The expectation is that the prices will eventually revert to their mean, allowing the trader to profit from this convergence.
+The pair trading technique leverages this phenomenon by identifying two assets whose prices exhibit a stable relationship over time. When these prices deviate from their historical relationship, a trading opportunity arises. This strategy involves buying the undervalued asset (the one that has fallen more than expected) and selling the overvalued asset (the one that has risen more than expected). The expectation is that the prices will eventually revert to their mean, allowing the trader to profit from this convergence.
 
-This market-neutral approach is particularly attractive because it does not rely on the overall market direction. Instead, it focuses on the relative performance of the paired assets, which can provide consistent returns even in volatile or bearish market conditions. By maintaining both long and short positions, pair trading inherently hedges market risk, which can enhance portfolio stability and reduce exposure to broad market movements.
+This market-neutral approach is particularly attractive because it doesn't rely on the overall market direction. Instead, it focuses on the relative performance of the paired assets, which can provide consistent returns even in volatile market conditions. By maintaining both long and short positions, pair trading inherently hedges market risk, which can enhance portfolio stability and reduce exposure to broad market movements.
 
 Before diving into this search for cointegrated pairs, let me introduce you the tick architecture.
 
@@ -30,7 +30,8 @@ The tick architecture can be seen as a series of interconnected Q processes desi
 To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, ML Model, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding best suited pairs.
 
 ## Identifying cointegrated indexes
-Pairs trading strategy relies heavily on identifying pairs of assets that maintain a long-term equilibrium relationship.
+
+The pairs trading strategy relies heavily on identifying pairs of assets that maintain a long-term equilibrium relationship as mentioned previously.
 
 Is this described mathematically? **Yes**:
 
@@ -78,6 +79,7 @@ fcoint:{@[;1]0f^coint[x;y]`}
 ```
 
 As we saw in the introduction, we are working in a tick architecture environment. This means that, in addition to receiving real-time prices for our indexes, this architecture provides a tool to store the closing prices of our indexes in our HDB at the end of the day. As obvious, establishing a connection with HDB is required:
+
 ```q
 hdb:hopen port
 ```
@@ -88,13 +90,16 @@ Then, we define the query that we want the HDB to run. In this case, we declare 
 ```q
 rs:{[n;syms]select date, sym, close from prices where date within (.z.d-tr;.z.d),sym in syms}
 ```
+
 The body of the function might seem pretty familiar to the SQL practitioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It is also worth noting that `.z.d` represents the current date, so we are interested in retrieving data from the `n` days back from today.
 
 
 Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: keeping computations as close to the data as possible. Instead of requesting data and then applying a computation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
+
 ```q
 t:`sym xgroup hdb(query_prices;4*365;syms)
 ```
+
 To communicate with the process, we pass a list to the `hdb` handle with the first element being the function and the subsequent elements being the arguments (last 4 years & involved indexes). Once we get our data we finally `xgroup` by index.
 
 > 💡 Once we have finished our communication with another process, we should close the connection, as in `hclose hdb`.
@@ -144,11 +149,11 @@ As you might guess, our next task is to build the model that helps us determine 
 
 ## Determining how to calculate the spreads
 
-Now let's focus on the ML Model component, where we will receive the pair of indexes that best fit our Pair Trading strategy according to the ADF test. And then we will develop a small Machine Learning model that will help us find these trading opportunities.
+Let's now focus on the ML Model component, which, given the pair of indexes that best fit our Pair Trading strategy according to the ADF test will allow us to develop a small Machine Learning model that will help us find these trading opportunities.
 
 ![Arch-ML](resources/general-architecture-ml-model.png)
 
-After this initial market assesment, we can move on to coding the actual Pair Trading model that calculates this relationships and the differences, that we are going to call **spreads**, between the prices of our indexes. The first approach we may try could simply be to subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
+After the initial market assesment previously done, we can start coding the actual Pair Trading model that calculates this relationships and the differences, that we are going to call **spreads**, between the prices of our indexes. The first approach we may try could simply be to subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
 
 Indeed, just subtracting the prices of two assets, as in $price_y−price_x$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
@@ -234,12 +239,13 @@ params:lr_fit[t[`SP500]`close;t[`NASDAQ100]`close]
 alpha_lr:params 0;beta_lr:params 1
 ```
 
-Lastly, let's encapsulate the calculation of the spread given these optimal model parameters:
+Lastly, let's encapsulate the spread calculation given these optimal model parameters:
+
 ```q
 sp:{y - alpha_lr + beta_lr * x};
 ```
 
-This will be our interface, so we will be able to call this function from other components and get the spread calculated.
+This will be our interface, so we will be able to call this function from other components and get the spread.
 
 This precisely meets one of our objectives: getting **a comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
