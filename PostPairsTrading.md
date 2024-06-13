@@ -19,11 +19,11 @@ The pair trading technique leverages this phenomenon by identifying two assets w
 
 This market-neutral approach is particularly attractive because it doesn't rely on the overall market direction. Instead, it focuses on the relative performance of the paired assets, which can provide consistent returns even in volatile market conditions. By maintaining both long and short positions, pair trading inherently hedges market risk, which can enhance portfolio stability and reduce exposure to broad market movements.
 
-Before diving into this search for cointegrated pairs, let me introduce you the tick architecture.
+Before diving into this search for related pairs, let me introduce you the tick architecture.
 
 ## What is the Tick Architecture?
 
-The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feedhandler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
+The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
 
 ![Architecture](resources/general-architecture.png)
 
@@ -50,7 +50,7 @@ Let's focus on the ADF Test component (why ADF? keep reading and you'll find why
 Let's move on to the code we need to implement it.
 
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`) of this indexes.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`), I mean, all possible pair combinations for these indexes.
 
 ```q
 syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
@@ -71,7 +71,7 @@ system"l pykx.q"
 
 One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
 
-We can proceed to create a function called **fcoint** to call our imported function from PyKX, handle any null values by filling them with 0, using `0f^` and return the second value, which in this case is the p-value.
+We can proceed to create a function called **fcoint** to call our imported function from PyKX, handle any null values by filling them with zeroes, using `0f^` and return the second value, which in this case is the p-value.
 
 ```q
 coint:.pykx.import[`statsmodels.tsa.stattools]`:coint
@@ -94,7 +94,7 @@ rs:{[n;syms]select date, sym, close from prices where date within (.z.d-tr;.z.d)
 The body of the function might seem pretty familiar to the SQL practitioner. In fact, we are exploiting **qSQL syntax** here, which leverages a syntax similar to SQL but optimised for kdb+. It is also worth noting that `.z.d` represents the current date, so we are interested in retrieving data from the `n` days back from today.
 
 
-Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: keeping computations as close to the data as possible. Instead of requesting data and then applying a computation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
+Now we need to send this function along with the necessary arguments to the HDB. This approach exemplifies a good practice in kdb+: _keeping computations as close to the data as possible_. Instead of requesting data and then applying a filter or transformation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
 
 ```q
 t:`sym xgroup hdb(query_prices;4*365;syms)
@@ -102,7 +102,7 @@ t:`sym xgroup hdb(query_prices;4*365;syms)
 
 To communicate with the process, we pass a list to the `hdb` handle with the first element being the function and the subsequent elements being the arguments (last 4 years & involved indexes). Once we get our data we finally `xgroup` by index.
 
-> 💡 Once we have finished our communication with another process, we should close the connection, as in `hclose hdb`.
+> 💡 Once we have finished our communication with another process, we should close the connection using `hclose hdb`.
 
 In our case, we are going to use closing prices to feed the ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we fill with 0 (`^`) and apply **fcoint** function to each (`.'`) pair of data lists.
 ```q
@@ -133,7 +133,7 @@ The resulting heatmap looks like this:
 
 We will drawn our attention towards the **NASDAQ100** and **SP500** synergy. They exhibit a vibrant green colour, indicative of a high degree of cointegration, or, in simpler terms, a very low probability of not being cointegrated. They demonstrate low p-values suggesting their strength as candidates. This is no surprise since they both belong to the American market and share numerous characteristics.
 
- > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the detailed intraday tick data for their prices is publicly available (TickStory) which we will require for the real-time setting that we'll present later on.
+ > 💡 As we can see, this pair of indexes is not the best candidate according to our ADF tests. However, we chose it because the detailed intraday tick data for their prices is publicly available (TickStory), and this is required for the real-time setting that we'll present later on.
 
 ![Prices](resources/cointegration.png)
 
