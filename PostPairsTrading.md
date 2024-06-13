@@ -149,7 +149,7 @@ As you might guess, our next task is to build the model that helps us determine 
 
 ## Determining how to calculate the spreads
 
-Let's now focus on the ML Model component, which, given the pair of indexes that best fit our Pair Trading strategy according to the ADF test will allow us to develop a small Machine Learning model that will help us find these trading opportunities.
+Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our Pair Trading strategy according to the ADF test, will allow us to develop a simple model that will help us find these trading opportunities.
 
 ![Arch-ML](resources/general-architecture-ml-model.png)
 
@@ -265,8 +265,8 @@ Assume that `tp` is just a handle to the TP process, similar to `hdb` from previ
 ```q
 upd:{.u.pub[`spread;([]time:1#y`time;spread:sp . y`bid)]};
 ```
-This function essentially takes the current prices of _SP500_ and _NASDAQ100_ as input, calculates the spread by calling `sp` function from **ML model** component, formats them as a table (along with the timestamp) and sends it to its subscribers by means of `.u.pub`. In this sense, the dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (`.u.sub`). However, in this case, the function is invoked automatically by the dashboard when a component selects the `spread` table from the RPT process as the source.
-> We have adapted our feed handler so that it always publishes pairs of cointegrated ticks, in order to simplify the implementation of RPT.
+This function essentially takes the current prices of _SP500_ and _NASDAQ100_ as input, calculates the spread by calling `sp`, the function resulting from the previous section, formats them as a table (along with the timestamp) and sends it to its subscribers by means of `.u.pub`. In this sense, the dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (`.u.sub`). However, in this case, the dashboard makes this task automatic and transparent to the user, by invoking this function once a component has selected the `spread` table from the RPT process as its data source.
+> We have adapted our feed handler so that it always publishes pairs of cointegrated ticks, in order to simplify the implementation of RPT. In a more realistic scenario, implementing `upd` would be more laborious.
 
 By using this approach, we only need to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI.
 This will allow us to plot our spreads in real time and we will end up with something like this:
@@ -283,7 +283,7 @@ A simple approach to window signals is to set these windows as twice the histori
 
 ![WSignals](resources/window_signals.gif)
 
-In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (NASDAQ100) is overvalued relative to the SP500. Therefore, we should sell NASDAQ100 and buy SP500. At the end of the gif, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
+In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (NASDAQ100) is overvalued relative to the SP500. Therefore, we should sell NASDAQ100 and buy SP500. At the end of the animation, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
 
 > 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series.
 
@@ -297,7 +297,7 @@ In this post, we have provided a comprehensive overview of the implementation of
 * Q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
 * Integrating a real-time component and connecting it with a dashboard is simple and efficient.
 
-More generally, and although we couldn't get into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process large amounts of data in a very short time with a small memory footprint, allowing us to monitor thousands of pairs simultaneously. Secondly, Q code is highly concise, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
+More generally, and although we couldn't get into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint, allowing us to monitor hundreds of pairs simultaneously. Secondly, Q code is highly concise and elegant, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
 
 
 ## Future Work
