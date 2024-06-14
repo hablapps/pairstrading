@@ -50,11 +50,11 @@ Let's focus on the ADF Test component (why ADF? keep reading and you'll find why
 Let's move on to the code we need to implement it.
 
 
-Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`), I mean, all possible pair combinations for these indexes.
+Imagine **we selected 13 world indexes** and aimed to assess whether they are **cointegrated** among them or not. In KDB+/Q we can start by declaring a variable containing every index and generating the cartesian product (`cross`). Then, we filter out duplicate and inverse pairs by selecting only those pairs where the first element is less than the second, ensuring each combination is unique.
 
 ```q
 syms:`SP500`NASDAQ100`BFX`FCHI`GDAXI`HSI`KS11`MXX`N100`N225`NYA`RUT`STOXX
-pairs: syms cross syms
+pairs:ps where (<).' ps:syms cross syms
 ```
 
 In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be.
@@ -105,17 +105,26 @@ To communicate with the process, we pass a list to the `hdb` handle with the fir
 > 💡 Once we have finished our communication with another process, we should close the connection using `hclose hdb`.
 
 In our case, we are going to use closing prices to feed the ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we fill with 0 (`^`) and apply **fcoint** function to each (`.'`) pair of data lists.
+
 ```q
-matrix:fcoint .' 0f^@\:[;`close](@/:[t]') pairs
+pvalues:fcoint .' 0f^@\:[;`close](@/:[t]') pairs
 ```
 
-Now, with our matrix in hand, we can plot it and **visually identify** which asset is more favorable. In order to do that, we can leverage PyKX once again to bring the `heatmap` module from `seaborn` a prominent data visualization library in the Python ecosystem to q:
+Now, with our p-values in hand, we can plot it and **visually identify** which asset is more favorable. To do this, we first need to adapt our p-values into a lower triangular matrix:
+
+```q
+matrix: m,'not null reverse m:-1 rotate sums[til count[syms]] _ reverse pvalues
+```
+
+In this code, we use the cut `(_)` operator to reshape our p-values and then append 1s (using a trick with null values) at the end of each row to make the matrix square. This transformation prepares the p-values for effective visualization.
+
+Then, we can leverage PyKX once again to bring the `heatmap` module from `seaborn` a prominent data visualization library in the Python ecosystem to q:
 
 > 💡 We could have created a dashboard to plot the heatmap using KX Dashboard, but in this case, it is simpler and faster to use PyKX and plot as we would in Python, with minor modifications to the syntax.
 
 ```q
 pyhm:.pykx.import[`seaborn]`:heatmap
-pyhm[pvalues;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
+pyhm[matrix;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
 ```
 
 > 💡 Remember the inverted "Red-Yellow-Green" colormap applied to the heatmap is done by passing `RdYlGn_r` to cmap argument.
@@ -211,9 +220,9 @@ $$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \
 Which we can see implemented in the following functions:
 
 ```q
-betaF:{dot:{sum x*y};                                      
-      ((n*dot[x;y])-(*/)(sum')(x;y))%                         
-      ((n:count[x])*dot[x;x])-sum[x]xexp 2}
+betaF:{
+  ((n*sum x*y)-sum[x]*sum y)%
+  (sum(x xexp 2)*n:count x)-sum[x] xexp 2}
 ```
 
 Now, following the same steps as before but for alpha, we arrive at:
@@ -235,14 +244,15 @@ lr_fit:{(alphaF;betaF).\:(x;y)}
 Now we simply need to apply `lr_fit` to find the optimal alpha and beta on the historical prices (which we took from HDB) of the indexes we choose.
 
 ```q
-params:lr_fit[t[`SP500]`close;t[`NASDAQ100]`close]
-alpha_lr:params 0;beta_lr:params 1
+(a;b):lr_fit . (t([]sym:`SP500`NASDAQ100))`close
 ```
+
+> 💡 As you may have noticed, we are using a new feature introduced in version 4.1 of Kdb+/q, which is pattern matching for variable assignment. This allows us to directly unpack the results of a function into multiple variables in a single step.
 
 Lastly, let's encapsulate the spread calculation given these optimal model parameters:
 
 ```q
-sp:{y - alpha_lr + beta_lr * x};
+sp:{y - a + b * x};
 ```
 
 This will be our interface, so we will be able to call this function from other components and get the spread.
@@ -304,7 +314,9 @@ More generally, and although we couldn't get into all the details in this post, 
 
 One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
 
-Special thanks to [...] for [...]
+## Acknowledgements
+
+We wish to express our sincere gratitude to Álvaro for initiating the development and research process of this post; we greatly appreciate the foundational work he established. Furthermore, we extend our deepest thanks to Javier Sabio for introducing us to the topic of pair trading and generously providing the initial documentation that facilitated our further exploration and development of this subject matter.
 
 ## References and Documentation
 
@@ -318,3 +330,7 @@ For the technical implementation, we relied on:
 For the financial implementation, we used:
 
 * QuantResearch: https://github.com/QuantConnect/Research/blob/master/Analysis/02%20Kalman%20Filter%20Based%20Pairs%20Trading.ipynb
+
+For the data gathering, we used:
+* Yahoo Finance API: https://github.com/ranaroussi/yfinance
+* Tickstory: https://tickstory.com/
