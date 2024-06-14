@@ -149,11 +149,11 @@ As you might guess, our next task is to build the model that helps us determine 
 
 ## Determining how to calculate the spreads
 
-Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our Pair Trading strategy according to the ADF test, will allow us to develop a simple model that will help us find these trading opportunities.
+Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our Pair Trading strategy, will allow us to develop a simple model that will help us find these trading opportunities.
 
 ![Arch-ML](resources/general-architecture-ml-model.png)
 
-After the initial market assesment previously done, we can start coding the actual Pair Trading model that calculates this relationships and the differences, that we are going to call **spreads**, between the prices of our indexes. The first approach we may try could simply be to subtract them and observe if the difference deviates significantly from zero, considering their scale difference.
+At this point, we can start coding the actual pairs trading model that calculates the relationships between the prices of our indexes, which we'll refer to as **spreads**. Our initial approach might simply involve subtracting the prices and observing whether the difference deviates significantly from zero, taking their scale difference into account.
 
 Indeed, just subtracting the prices of two assets, as in $price_y−price_x$ may not provide a clear understanding of their relationship. Let's illustrate this with an example:
 
@@ -184,11 +184,11 @@ Since both assets are related, **we can leverage linear regression** to our adva
 
 $$Y = \alpha + \beta X + \varepsilon$$
 
-In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 index, α is the intercept, β is the slope (which indicates the relationship strength between the two indexes), and ε is the error term.
+In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 index, α is the intercept, β is the slope (which indicates the relationship strength between the two indexes), and ε is the error term. We illustrate it in the next graph:
 
 ![LinearRegression](resources/linear_regression.png)
 
-The plotted graph above illustrates the relationship between the NASDAQ 100 and the S&P 500 indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 index price. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
+As you can see, it shows the relationship between both indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 one. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for price_x and price_y are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
@@ -199,9 +199,7 @@ q)spreads: log[price_y] - alpha + log[price_x] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical ways to find the line that best fits the prices.
-
-The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
+There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical ways to find the line that best fits the prices. The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
 $$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha)^2$$
 
 After taking partial derivatives with respect beta and setting to zero, and then solving, we can arrive at this formula:
