@@ -23,8 +23,7 @@ Before diving into this search for related pairs, let me introduce you the tick 
 
 ## What is the Tick Architecture?
 
-The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications.
-
+The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
 ![Architecture](resources/general-architecture.png)
 
 To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, ML Model, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding best suited pairs.
@@ -110,13 +109,11 @@ In our case, we are going to use closing prices to feed the ADF test, so we have
 pvalues:fcoint .' 0f^@\:[;`close](@/:[t]') pairs
 ```
 
-Now, with our p-values in hand, we can plot it and **visually identify** which asset is more favorable. To do this, we first need to adapt our p-values into a lower triangular matrix:
-
+Now, with our p-values in hand, we can plot it and **visually identify** which asset is more favorable. To do this, we first need to adapt our p-values into a lower triangular matrix. This decision will become clear when we present the final graph:
 ```q
 matrix: m,'not null reverse m:-1 rotate sums[til count[syms]] _ reverse pvalues
 ```
-
-In this code, we use the cut `(_)` operator to reshape our p-values and then append 1s (using a trick with null values) at the end of each row to make the matrix square. This transformation prepares the p-values for effective visualization.
+The details aren't crucial, but if you're curious about the implementation, we just use the cut (`_`) operator to reshape our p-values, and then append 1s (using a trick with null values) to the end of each row to form a square matrix. This transformation readies the p-values for effective visualization.
 
 Then, we can leverage PyKX once again to bring the `heatmap` module from `seaborn` a prominent data visualization library in the Python ecosystem to q:
 
@@ -175,7 +172,6 @@ q)spreads: price_y - price_x
 
 **These spread values don't offer much insight** into the relationship between the two assets. Are both assets increasing? Are they moving in opposite directions? It's unclear from these numbers alone.
 
-
 Let's consider **using logarithms**, as they possess favourable properties for our pricing model. They prevent negative values and stabilize variance. Log returns are time-additive and symmetric, simplifying the calculation and analysis of returns. This improves the accuracy of statistical models and ensures non-negative pricing, enhancing model robustness and reliability:
 
 ```q
@@ -222,15 +218,14 @@ betaF:{
   ((n*sum x*y)-sum[x]*sum y)%
   (sum(x xexp 2)*n:count x)-sum[x] xexp 2}
 ```
-
-Now, following the same steps as before but for alpha, we arrive at:
+As shown, the resulting code is concise and directly corresponds to the original formula. Now, following the same steps as before but for alpha, we arrive at:
 
 $$\alpha = \bar y - \beta \cdot \bar x$$
 
 Which is implemented in the following line of code:
 
 ```q
-alphaF: {avg[y]-betaF[x;y]*avg[x]}
+alphaF:{avg[y]-betaF[x;y]*avg[x]}
 ```
 
 Finally, we can encapsulate both parameters in just one function called `lr_fit`. This function only has to apply each fit function to our input data.
@@ -250,13 +245,12 @@ Now we simply need to apply `lr_fit` to find the optimal alpha and beta on the h
 Lastly, let's encapsulate the spread calculation given these optimal model parameters:
 
 ```q
-sp:{y - a + b * x};
+sp:{y - a + b*x};
 ```
 
 This will be our interface, so we will be able to call this function from other components and get the spread.
 
 This precisely meets one of our objectives: getting **a comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
-
 
 ## Real-time spread calculation
 
@@ -305,8 +299,7 @@ In this post, we have provided a comprehensive overview of the implementation of
 * Q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
 * Integrating a real-time component and connecting it with a dashboard is simple and efficient.
 
-More generally, and although we couldn't get into all the details in this post, we'd like to emphasize the three major selling points of KDB+/Q. First, it can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint, allowing us to monitor hundreds of pairs simultaneously. Secondly, Q code is highly concise and elegant, enabling us to implement all the components in the diagram in less than 100 lines of code. Finally, the technology is highly flexible, allowing us to easily adapt to other scenarios beyond Pairs Trading.
-
+More broadly, while we couldn't delve into all the details in this post, we want to emphasize three key advantages of KDB+/Q in this context. First, the platform's performance is remarkably impressive, easily accommodating hundreds or thousands of pairs simultaneously. Second, Q code is highly concise and elegant, enabling us to implement all the diagram components in under 100 lines of code. Finally, the technology is extremely flexible, allowing us to seamlessly adapt to other implementations of Pairs Trading. All that said, running, maintaining, and extending this system is a genuine pleasure.
 
 ## Future Work
 
@@ -314,7 +307,7 @@ One valid concern is that our calculations might be heavily influenced by past d
 
 ## Acknowledgements
 
-We wish to express our sincere gratitude to Álvaro for initiating the development and research process of this post; we greatly appreciate the foundational work he established. Furthermore, we extend our deepest thanks to Javier Sabio for introducing us to the topic of pair trading and generously providing the initial documentation that facilitated our further exploration and development of this subject matter.
+We wish to express our sincere gratitude to Álvaro Sánchez-Paniagua Ríos for initiating the development and research process of this post; we greatly appreciate the foundational work he established. Furthermore, we extend our deepest thanks to Javier Sabio for introducing us to the topic of pair trading and generously providing the initial documentation that facilitated our further exploration and development of this subject matter.
 
 ## References and Documentation
 
