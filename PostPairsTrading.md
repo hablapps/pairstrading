@@ -245,7 +245,7 @@ Now we simply need to apply `lr_fit` to find the optimal alpha and beta on the h
 (a;b):lr_fit . (t([]sym:`SP500`NASDAQ100))`close
 ```
 
-> 💡 As you may have noticed, we are using a new feature introduced in version 4.1 of Kdb+/q, which is pattern matching for variable assignment. This allows us to directly unpack the results of a function into multiple variables in a single step.
+> 💡 As you may have noticed, we are using a new feature introduced in version 4.1 of KDB+/Q, which is pattern matching for variable assignment. This allows us to directly unpack the results of a function into multiple variables in a single step.
 
 Lastly, let's encapsulate the spread calculation given these optimal model parameters:
 
