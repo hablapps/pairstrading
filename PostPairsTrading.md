@@ -1,4 +1,4 @@
-# A Match Made in Trading: Step-by-Step Pairs Trading Guide
+# Efficiency in Duality: Real-Time Pair Trading Using KDB+/Q
 
 KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of _Pairs Trading_, one of the most popular strategies in the trading world, and its implementation in Q.
 
@@ -103,10 +103,10 @@ To communicate with the process, we pass a list to the `hdb` handle with the fir
 
 > 💡 Once we have finished our communication with another process, we should close the connection using `hclose hdb`.
 
-In our case, we are going to use closing prices to feed the ADF test, so we have to index (`@`) by column **close** from each pair in our table. Additionally, we fill with 0 (`^`) and apply **fcoint** function to each (`.'`) pair of data lists.
+In our case, we utilize closing prices for conducting the ADF test. To achieve this, we first index (`@`) each pair in **pairs** by the **sym** column, and then extract the corresponding **close** column to access the closing prices associated with each (`'`) pair. Additionally, we fill with 0 (`^`) and apply **fcoint** function to each (`.'`) pair of data lists.
 
 ```q
-pvalues:fcoint .' 0f^@\:[;`close](@/:[t]') pairs
+pvalues:fcoint .' 0f^({x`close}')t@([]sym:u)
 ```
 
 Now, with our p-values in hand, we can plot it and **visually identify** which asset is more favorable. To do this, we first need to adapt our p-values into a lower triangular matrix. This decision will become clear when we present the final graph:
