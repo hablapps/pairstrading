@@ -1,6 +1,6 @@
-# Efficiency in Duality: Real-Time Pair Trading Using KDB+/Q
+# Efficiency in Duality: Real-Time Pairs Trading Using KDB+/Q
 
-KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of _Pairs Trading_, one of the most popular strategies in the trading world, and its implementation in Q.
+KDB+/Q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in Q.
 
 In order to achieve this, we have outlined the following steps:
 * Identifying cointegrated indexes, i.e., related pairs
@@ -15,9 +15,9 @@ The market has often been described as a **stochastic** (a term which essentiall
 
 For instance, it's logical to expect that if the prices of petrol rise, the prices of cars should also rise. This is because auto companies rely on petrol for their operations, indicating an interconnectedness between the two. Over the long run, they tend to follow similar trends, **reflecting their underlying relationship**.
 
-The pair trading technique leverages this phenomenon by identifying two assets whose prices exhibit a stable relationship over time. When these prices deviate from their historical relationship, a trading opportunity arises. This strategy involves buying the undervalued asset (the one that has fallen more than expected) and selling the overvalued asset (the one that has risen more than expected). The expectation is that the prices will eventually revert to their mean, allowing the trader to profit from this convergence.
+The pairs trading technique leverages this phenomenon by identifying two assets whose prices exhibit a stable relationship over time. When these prices deviate from their historical relationship, a trading opportunity arises. This strategy involves buying the undervalued asset (the one that has fallen more than expected) and selling the overvalued asset (the one that has risen more than expected). The expectation is that the prices will eventually revert to their mean, allowing the trader to profit from this convergence.
 
-This market-neutral approach is particularly attractive because it doesn't rely on the overall market direction. Instead, it focuses on the relative performance of the paired assets, which can provide consistent returns even in volatile market conditions. By maintaining both long and short positions, pair trading inherently hedges market risk, which can enhance portfolio stability and reduce exposure to broad market movements.
+This market-neutral approach is particularly attractive because it doesn't rely on the overall market direction. Instead, it focuses on the relative performance of the paired assets, which can provide consistent returns even in volatile market conditions. By maintaining both long and short positions, pairs trading inherently hedges market risk, which can enhance portfolio stability and reduce exposure to broad market movements.
 
 Before diving into this search for related pairs, let me introduce you the tick architecture.
 
@@ -25,8 +25,9 @@ Before diving into this search for related pairs, let me introduce you the tick 
 
 The tick architecture can be seen as a series of interconnected Q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB) and historical database (HDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the HDB archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
 ![Architecture](resources/general-architecture.png)
+*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
-To develop the pair trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, ML Model, Real-time Pair Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding best suited pairs.
+To develop the pairs trading strategy, we have added a couple of new components to the default vanilla architecture: ADF Test, ML Model, Real-time Pairs Trading (RPT) and KX Dashboard. They will be introduced as required. So finally, let's move on to the very first step of this journey: finding best suited pairs.
 
 ## Identifying cointegrated indexes
 
@@ -45,6 +46,7 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 Let's focus on the ADF Test component (why ADF? keep reading and you'll find why). It reads data from the HDB and provides the means for the quant to determine a cointegrated pair as output, which will then be supplied as input for further steps.
 
 ![Arch 1st Part](resources/general-architecture-adf.png)
+*kdb architecture diagram by Alexander Unterrainer, modified by us.*
 
 Let's move on to the code we need to implement it.
 
@@ -155,9 +157,10 @@ As you might guess, our next task is to build the model that helps us determine 
 
 ## Determining how to calculate the spreads
 
-Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our Pair Trading strategy, will allow us to develop a simple model that will help us find these trading opportunities.
+Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our pairs trading strategy, will allow us to develop a simple model that will help us find these trading opportunities.
 
 ![Arch-ML](resources/general-architecture-ml-model.png)
+*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 At this point, we can start coding the actual pairs trading model that calculates the relationships between the prices of our indexes, which we'll refer to as **spreads**. Our initial approach might simply involve subtracting the prices and observing whether the difference deviates significantly from zero, taking their scale difference into account.
 
@@ -193,7 +196,7 @@ In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 ind
 
 ![LinearRegression](resources/linear_regression.png)
 
-As you can see, it shows the relationship between both indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 one. This predictive power is crucial for pair trading, as it helps identify mispricings and potential trading opportunities.
+As you can see, it shows the relationship between both indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 one. This predictive power is crucial for pairs trading, as it helps identify mispricings and potential trading opportunities.
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for price_x and price_y are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
@@ -257,6 +260,7 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can apply the model to produce the spreads, which will then be sent to the dashboard.
 
 ![Arch-bottom](resources/general-architecture-rpt.png)
+*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 
 Real-time components can manifest their interest for a particular table and for a subset of symbols. As a result from previous steps, we know we are interested on the quotes for SP500 and NASDAQ100:
@@ -303,11 +307,11 @@ More broadly, while we couldn't delve into all the details in this post, we want
 
 ## Future Work
 
-One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pair trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
+One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pairs trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
 
 ## Acknowledgements
 
-We wish to express our sincere gratitude to Álvaro Sánchez-Paniagua Ríos for initiating the development and research process of this post; we greatly appreciate the foundational work he established. Furthermore, we extend our deepest thanks to Javier Sabio for introducing us to the topic of pair trading and generously providing the initial documentation that facilitated our further exploration and development of this subject matter.
+We wish to express our sincere gratitude to Álvaro Sánchez-Paniagua Ríos for initiating the development and research process of this post; we greatly appreciate the foundational work he established. Furthermore, we extend our deepest thanks to Javier Sabio for introducing us to the topic of pairs trading and generously providing the initial documentation that facilitated our further exploration and development of this subject matter.
 
 ## References and Documentation
 
