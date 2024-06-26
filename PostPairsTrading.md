@@ -157,9 +157,9 @@ As you might guess, our next task is to build the model that helps us determine 
 
 ## Determining how to calculate the spreads
 
-Let's now focus on the Machine Learning (ML) Model component, which, given the pair of indexes that best fit our pairs trading strategy, will allow us to develop a simple model that will help us find these trading opportunities.
+Having identified the optimal pair of indices for our pairs trading strategy, let's now explore how to deploy a simple model that detects trading opportunities. Additionally, we'll examine how all of this fits within the MS (Model Server) component.
 
-![Arch-ML](resources/general-architecture-ml-model.png)
+![Arch-ML](resources/general-architecture-ms.png)
 *kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 At this point, we can start coding the actual pairs trading model that calculates the relationships between the prices of our indexes, which we'll refer to as **spreads**. Our initial approach might simply involve subtracting the prices and observing whether the difference deviates significantly from zero, taking their scale difference into account.
@@ -192,11 +192,11 @@ Since both assets are related, **we can leverage linear regression** to our adva
 
 $$Y = \alpha + \beta X + \varepsilon$$
 
-In this context, Y represents the NASDAQ 100 index, X represents the S&P 500 index, α is the intercept, β is the slope (which indicates the relationship strength between the two indexes), and ε is the error term. We illustrate it in the next graph:
+In this context, Y represents the FCHI index, X represents the GDAXI index, α is the intercept, β is the slope (which indicates the relationship strength between the two indexes), and ε is the error term. We illustrate it in the next graph:
 
 ![LinearRegression](resources/linear_regression.png)
 
-As you can see, it shows the relationship between both indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the NASDAQ 100 index price based on the S&P 500 one. This predictive power is crucial for pairs trading, as it helps identify mispricings and potential trading opportunities.
+As you can see, it shows the relationship between both indexes, with each purple dot representing a data point of their prices at a given time. The linear trend visible in the scatter plot suggests a strong positive cointegration between the two indexes. By applying linear regression, we can model this relationship mathematically, allowing us to predict the FCHI index price based on the GDAXI one. This predictive power is crucial for pairs trading, as it helps identify mispricings and potential trading opportunities.
 
 Linear regression aims to identify relationships between historical data, which we then extrapolate to current data. The differences between these relationships, or deviations, are our spreads. We've already calculated the 𝛼 and 𝛽 using the logarithmic values of our historical data (since real-time price values for price_x and price_y are unknown). Now, we simply combine everything and apply linear regression to our price logarithms:
 
@@ -207,51 +207,38 @@ q)spreads: log[price_y] - alpha + log[price_x] * beta
 -0.1493929 0.0451223 -0.08835117 0.0451223 0.1579725
 ```
 
-There are different methods we can use to obtain the best alpha and beta values that minimize the spreads or, in other words, there are mathematical ways to find the line that best fits the prices. The most common method to find the best relationships (alpha and beta) is the least squares method, which minimizes the sum of the squared residuals:
-$$S(\alpha, \beta) = (log(priceY) - (\beta \cdot log(priceX)+\alpha)^2$$
+To find the best relationship between our pair of assets in a pairs trading strategy, we need to determine the optimal values of alpha and beta that minimize the spread. In mathematical terms, we're looking for the line that best fits the prices. The most common approach to this problem is the least squares method, let's see how can we approach this problem.
 
-After taking partial derivatives with respect beta and setting to zero, and then solving, we can arrive at this formula:
+Firstly, we can rewrite the linear regression equation as a matrix product:
+$$ Y = (\alpha, \beta)\begin{pmatrix}1 \\ X\end{pmatrix}$$
 
-$$\beta = \frac{{(n \cdot \sum(x \cdot y)) - (\sum x \cdot \sum y)}}{{(n \cdot \sum(x^2)) - (\sum x)^2}}$$
+Where α represents the intercept and β the slope of our regression line $Y = α + βX$.
 
-Which we can see implemented in the following functions:
-
-```q
-betaF:{
-  ((n*sum x*y)-sum[x]*sum y)%
-  (sum(x xexp 2)*n:count x)-sum[x] xexp 2}
-```
-As shown, the resulting code is concise and directly corresponds to the original formula. Now, following the same steps as before but for alpha, we arrive at:
-
-$$\alpha = \bar y - \beta \cdot \bar x$$
-
-Which is implemented in the following line of code:
+In KDB+/q, we can efficiently solve this equation using the `lsq` (least squares) operator. Here's a compact function that computes the linear regression coefficients:
 
 ```q
-alphaF:{avg[y]-betaF[x;y]*avg[x]}
+lrf:{first enlist[y]lsq x xexp/:0 1}
 ```
 
-Finally, we can encapsulate both parameters in just one function called `lr_fit`. This function only has to apply each fit function to our input data.
+This function works by creating a column vector [1, X] using a trick with `xexp`, then applying the `lsq` operator to solve the least squares problem. It leverages q's vectorized operations and built-in least squares solver to efficiently compute the regression coefficients.
+
+Now, let's encapsulate the linear regression fitting and spread calculation processes. This will provide an interface that other components can use to fit a linear regression and calculate spreads.
+
+First, to encapsulate the **linear regression fitting**, we'll develop a function called `ab`. This function takes a pair of indices as input, retrieves data from the `cls` table (which we used in the cointegration test), and uses the `lrf` function to obtain the linear regression parameters. The implementation would look like this:
 
 ```q
-lr_fit:{(alphaF;betaF).\:(x;y)}
+ab:{lrf . log(cls([]sym:x))`close}
 ```
 
-Now we simply need to apply `lr_fit` to find the optimal alpha and beta on the historical prices (which we took from HDB) of the indexes we choose.
+Next, we'll encapsulate the **spread calculation**. We'll create a function that takes a pair of indices and returns another function. This returned function will expect the prices of `x` and `y` as inputs and calculate the spread. Leveraging q's conciseness, we can implement this as follows:
 
 ```q
-(a;b):lr_fit . (t([]sym:`SP500`NASDAQ100))`close
+sm:{[a;b;x;y]y-a+b*x}. ab@
 ```
 
-> 💡 As you may have noticed, we are using a new feature introduced in version 4.1 of KDB+/Q, which is pattern matching for variable assignment. This allows us to directly unpack the results of a function into multiple variables in a single step.
+The result is a powerful and concise interface for fitting linear regressions and calculating spreads, which can be easily used by other components in our system.
 
-Lastly, let's encapsulate the spread calculation given these optimal model parameters:
-
-```q
-sp:{y - a + b*x};
-```
-
-This will be our interface, so we will be able to call this function from other components and get the spread.
+> 💡 As you may have noticed, this idea could be generalized and expanded to create a full-fledged model server. This server could host a variety of models, ranging from simple ones like linear regression to more complex models, making them accessible to other components. It could also include additional functions that would transform it into a powerful tool in the context of algorithmic trading and financial systems.
 
 This precisely meets one of our objectives: getting **a comprehensive method for representing relative changes between both assets**. As we can deduce, our mean is now 0 because our assets are normalized, cointegrated and on the same scale. Therefore, ideally, the differential between their prices should be 0. Consequently, when our spread is below 0, we infer that asset X is overpriced, whereas if it's above 0, then asset Y is overpriced.
 
