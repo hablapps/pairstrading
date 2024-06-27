@@ -56,7 +56,7 @@ As you can see, the query resembles SQL: _select closing price by symbol from th
 
 > 💡 Using short names for variables is a standard convention that, once you get used to it, improves readability.
 
-Now that we have defined a query, we need to execute it on the HDB component. To do so, we use [interprocess communication](https://code.kx.com/q/basics/ipc/) (ipc) to send the query:
+Now that we have defined a query, we need to execute it on the HDB component. To do so, we use [interprocess communication](https://code.kx.com/q/basics/ipc/) (IPC) to send the query:
 ```q
 hdb:`$":",.z.x 0
 cls:hdb(rs;2*365)
@@ -80,7 +80,7 @@ STOXX    | 416.19   413.42   407.2    400.68   407.34   415.01   417.12   415..
 > 💡 This approach exemplifies a good practice in kdb+: _keeping computations as close to the data as possible_. Instead of requesting data and then applying a filter or transformation to it, we send the computation to the HDB itself so we avoid transmitting unnecessary data over the communication.
 
 Once we have collected the prices, it is useful to identify all possible pairs:
-```
+```q
 syms:exec sym from cls
 ps:sx where (<).' sx:syms cross syms
 ```
@@ -221,25 +221,36 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 
 ## Real-time spread calculation
 
-Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can apply the model to produce the spreads, which will then be sent to the dashboard.
+Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can use the model to produce the spreads, which will then be sent to the dashboard.
 
 ![Arch-bottom](resources/general-architecture-rpt.png)
 *kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
-
-Real-time components can manifest their interest for a particular table and for a subset of symbols. As a result from previous steps, we know we are interested on the quotes for SP500 and NASDAQ100:
+The first step in implementing this component is to retrieve the most cointegrated pair and its associated model. As we did before, we use IPC to communicate with the MS component:
 ```q
-tp"(.u.sub[`quote;`SP500`NASDAQ100])"
+(ix;sp):ms({enlist[ix],sm ix:ps pv?min pv};::)
 ```
-Assume that `tp` is just a handle to the TP process, similar to `hdb` from previous sections. Basically, what `.u.sub` does is registering the RPT handle in the TP so it can later notify the recently subscribed component about new events. To do so, it assumes that the subscriber has defined an `upd` function:
-```q
-upd:{.u.pub[`spread;([]time:1#y`time;spread:sp . y`bid)]};
-```
-This function essentially takes the current prices of _SP500_ and _NASDAQ100_ as input, calculates the spread by calling `sp`, the function resulting from the previous section, formats them as a table (along with the timestamp) and sends it to its subscribers by means of `.u.pub`. In this sense, the dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (`.u.sub`). However, in this case, the dashboard makes this task automatic and transparent to the user, by invoking this function once a component has selected the `spread` table from the RPT process as its data source.
-> We have adapted our feed handler so that it always publishes pairs of cointegrated ticks, in order to simplify the implementation of RPT. In a more realistic scenario, implementing `upd` would be more laborious.
+Here, we assume that `ms` points to the MS component (similar to how `hdb` was used in a previous section), and we send a query for MS to execute. It calculates the most cointegrated pair by finding the minimum p-value, identifying its position, and using it to find the names of the indexes. Finally, it executes the `sm` function obtained from the previous section to get the spread model for the most cointegrated pair. As a result, we get both the pair of indexes (`ix`) and the spread model (`sp`).
 
-By using this approach, we only need to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI.
-This will allow us to plot our spreads in real time and we will end up with something like this:
+Real-time components can manifest their interest in a particular table and a subset of symbols. Naturally, we are only interested in getting quotes associated with one of the indexes in our `ix` pair:
+```q
+tp"(.u.sub[`quote;",(.Q.s1 ix),"])"
+```
+As usual, we assume that `tp` is a pointer to the TP process. Essentially, `.u.sub` registers the RPT handle in the TP so it can later notify the recently subscribed component about new events. It assumes that the subscriber has defined an `upd` function as a kind of callback:
+```q
+d:ix!2#0f
+upd:{d^:exec sym!log(ask+bid)%2 from select by sym from y}
+```
+Our `upd` function takes ticks as input, selects the most recent one for each symbol, calculates their mid price, and updates the values (if any) in a simple dictionary `d`. This dictionary acts as a cache, which becomes essential in the following and final step.
+
+Now we need to notify the KX Dashboard about the spreads. The dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (.u.sub). However, in this case, the dashboard makes this task automatic and transparent to the user by invoking this function once a component has selected the `spread` table from the RPT process as its data source. With this setup, we can publish events to our subscribers using `.u.pub`:
+```q
+.z.ts:{.u.pub[`spread;([]time:1#.z.N;spread:sp . d ix)]}
+\t 16
+```
+As shown, we wrap this publication as part of a `.z.ts` function. This function is special because it can invoked automatically by setting a value for `\t`. In this case, we instruct kdb to publish the last seen spread from `d` every 16 ms. Why 16 ms? Because this allows the dashboard to update at a rate of ~60 frames per second, as illustrated in the [Streaming section](https://code.kx.com/dashboards/datasources/#streaming) from the KX Dashboard documentation.
+
+By using this approach, it only remains to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
 
 ![SpreadsD](resources/spreads.gif)
 
@@ -247,13 +258,11 @@ And there we have it! **A perfectly plotted spread series in real-time**, ready 
 
 Up until this point in this section, we have taken a look at how we, having previously identified a pair of compatible assets, could reliably calculate a meaningful spread and implemented it in a simulated real-time scenario. Thanks to KX Dashboards we were also able to create a simple plot to show all this information in a way that's easily understandable.
 
-To finish, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows.
-
-A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
+To finish, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
 
 ![WSignals](resources/window_signals.gif)
 
-In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (NASDAQ100) is overvalued relative to the SP500. Therefore, we should sell NASDAQ100 and buy SP500. At the end of the animation, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
+In this instance, we can see that the spread (purple line) is positive and above the signal (blue line), indicating that our Y index (GDAXI) is overvalued relative to the FCHI. Therefore, we should sell GDAXI and buy FCHI. At the end of the animation, it can be observed that the spread returns to 0 (green line), meaning the indexes are no longer overvalued or undervalued, respectively. At this point, we should unwind the positions we acquired earlier.
 
 > 💡 Signal windows play a pivotal role in implementing Pairs Trading strategies. They serve as indicators for determining when to execute buy and sell actions, acting as arbitrary thresholds that guide our algorithm's decision-making process. These windows are derived from the variance of our data, representing a static variance assumption due to our consideration of a time-independent cointegrated series.
 
@@ -293,3 +302,4 @@ For the financial implementation, we used:
 For the data gathering, we used:
 * Yahoo Finance API: https://github.com/ranaroussi/yfinance
 * Tickstory: https://tickstory.com/
+
