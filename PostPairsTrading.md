@@ -52,7 +52,7 @@ If our objective is to analyze potential pairs for the strategy using index data
 ```q
 rs:{select close by sym from stock where date within(.z.d-x;.z.d)}
 ```
-As you can see, the query resembles SQL: _select closing price by symbol from the stock table where the date is in the range between today and x days ago_. Indeed, we are taking advantage of the q-SQL syntactic facilities, which enable newcomers to be productive quickly, as evidenced by the (KX Academy)[https://learninghub.kx.com/courses/kdb-developer-level-1/]. It is worth mentioning that the query is enclosed in curly brackets, indicating that it is actually a function taking `x` as a parameter. The function is named `rs` to signify that it (r)eads (s)tocks.
+As you can see, the query resembles SQL: _select closing price by symbol from the stock table where the date is in the range between today and x days ago_. Indeed, we are taking advantage of the q-SQL syntactic facilities, which enable newcomers to be productive quickly, as evidenced by the [KX Academy](https://learninghub.kx.com/courses/kdb-developer-level-1/). It is worth mentioning that the query is enclosed in curly brackets, indicating that it is actually a function taking `x` as a parameter. The function is named `rs` to signify that it (r)eads (s)tocks.
 
 > 💡 Using short names for variables is a standard convention that, once you get used to it, improves readability.
 
