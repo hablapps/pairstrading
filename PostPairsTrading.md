@@ -1,6 +1,6 @@
 # Efficiency in Duality: Real-Time Pairs Trading Using kdb+/q
 
-kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We achieve this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and libraries from the kdb ecosystem.
+kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and libraries from the kdb ecosystem.
 
 In order to achieve this, we have outlined the following steps:
 * Identifying related indexes
