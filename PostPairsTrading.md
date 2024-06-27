@@ -46,7 +46,7 @@ Hence, we're interested in **cointegrated assets**, which are assets that exhibi
 
 Let's shift our focus to the MS component, which has several responsibilities. In this section, we'll concentrate on its first task: reading data from the HDB and calculating the degree of cointegration among existing pairs. This step is crucial as it lays the foundation for subsequent actions in the strategy. How should we go about implementing this process?
 
-![Arch 1st Part](resources/general-architecture-adf.png)
+![Arch 1st Part](resources/general-architecture-ms.png)
 
 If our objective is to analyze potential pairs for the strategy using index data and their corresponding prices, querying the HDB for this information is a sensible approach. Assuming the HDB maintains a _stock_ table with the closing prices of each index for every date, we can employ the following query to retrieve all closing prices from the last `x` days:
 ```q
@@ -86,25 +86,27 @@ ps:sx where (<).' sx:syms cross syms
 ```
 The first line extracts the sym column from the table. The second line generates their Cartesian product (`cross`) and filters out duplicate and inverse pairs by selecting only those pairs `where` the first element is alphabetically less than the second, ensuring each combination is unique. We are now ready to start analysing the cointegration of our pairs.
 
-In this scenario, a crucial tool at our disposal is the Augmented Dickey-Fuller (ADF) test, an essential statistical test for assessing the stationarity of time series data. The more stationary the time series are, the more cointegrated they are likely to be. This statistical test is a **hypothesis test**, where we use our data to see if we can accept or reject a hypothesis. In our case, the hypothesis is whether the time series is non-stationary. To determine this, we use **p-values**.
+To assess the level of cointegration between our chosen pair of assets, we'll employ a statistical test. This test will help us quantify the strength of the long-term equilibrium relationship we're looking for in our pairs trading strategy.
 
-**P-values** help us decide whether to reject the null hypothesis. If the p-value is low, it indicates that we can reject the hypothesis that the time series is non-stationary, suggesting that our assets are cointegrated. The lower the p-value, the greater the confidence in rejecting the null hypothesis. It is very common to use a threshold of 0.05 on the p-value to reject hypotheses.
+The cointegration test is a **hypothesis test**, where we use our data to evaluate a specific hypothesis. In this case, our null hypothesis is that the two time series are not cointegrated. To interpret the results of this test, we'll be focusing on **p-values**.
 
-For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our ADF test function and plotting a heatmap of our results. Developing these functionalities directly in q would be time-consuming and prone to errors. Although an implementation of the ADF test in kdb+/q would be more efficient and faster, the effort required would outweigh the benefits for this particular case where performance isn't critical. Therefore, we rely on PyKX to streamline the process by leveraging relevant libraries from the Python ecosystem.
+**P-values** help us decide whether to reject the null hypothesis. If the p-value is low, it suggests that we can reject the hypothesis of no cointegration, indicating that our assets are likely cointegrated. The lower the p-value, the stronger the evidence for cointegration. Conventionally, a threshold of 0.05 is often used for the p-value to reject the null hypothesis.
+
+For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our cointegration test function and plotting a heatmap of our results. Developing these functionalities directly in q would be time-consuming and prone to errors. Although an implementation of the cointegration test in kdb+/q would be more efficient and faster, the effort required would outweigh the benefits for this particular case where performance isn't critical. Therefore, we rely on PyKX to streamline the process by leveraging relevant libraries from the Python ecosystem.
 ```q
 system"l pykx.q"
 ```
-One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Augmented Dickey-Fuller (ADF) test**.
+One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Cointegration test**.
 ```q
 co:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-We can proceed to create a function called `aeg` to call our imported function from PyKX and return the second element from the resulting list, which in this case is the p-value.
+We can proceed to create a function called `cof` to call our imported function from PyKX and return the second element from the resulting list, which in this case is the p-value.
 ```q
-aeg:@[;1]co[<]::
+cof:@[;1]co[<]::
 ```
 Next, we will get the prices involved in each pair and use the function above to produce the desired p-values:
 ```q
-pv:aeg .'({x`close}')cls([]sym:ps)
+pv:cof .'({x`close}')cls([]sym:ps)
 ```
 The implementation details are not as important as illustrating the concision and terseness achieved when developing code in q.
 
