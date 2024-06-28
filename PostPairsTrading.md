@@ -23,12 +23,14 @@ Before diving into this search for related pairs, let me introduce you the tick 
 
 ## What is the Tick Architecture?
 
-The tick architecture can be seen as a series of interconnected q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the historical database (HDB) archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
+The tick architecture can be seen as a series of interconnected q processes commonly used to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the historical database (HDB) archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
 
 ![Architecture](resources/general-architecture.png)
-*kdb tick architecture [diagram by Alexander Unterrainer](https://www.defconq.tech/docs/architecture/plain), extended by us.*
+*kdb tick architecture [diagram by Alexander Unterrainer](https://www.defconq.tech/docs/architecture/plain), extended by us for this scenario.*
 
 To develop the pairs trading strategy, we have integrated several new components into the default vanilla architecture. These include the Model Server (MS), Real-time Pairs Trading (RPT), and KX Dashboard, which will be introduced as needed. Now, let's begin our journey with the first step: identifying the most suitable pairs.
+
+> 📚 If you are still curious about this topic, you can check out the new [kdb+ architecture course](https://learninghub.kx.com/courses/kdb-architecture/) at the KX Academy by Michaela Woods. If you want to go down to the metal, Alexander Unterrainer does an excellent job dissecting all the components, line by line, in his [KDB Tick Explained](https://www.defconq.tech/docs/tutorials/tick) series.
 
 ## Identifying cointegrated indexes
 
@@ -137,7 +139,6 @@ As you might guess, our next task is to build the model that helps us determine 
 Having identified the optimal pair of indices for our pairs trading strategy, let's now explore how to deploy a simple model that detects trading opportunities. Additionally, we'll examine how all of this fits within the MS (Model Server) component.
 
 ![Arch-ML](resources/general-architecture-ms.png)
-*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 At this point, we can start coding the actual pairs trading model that calculates the relationships between the prices of our indexes, which we'll refer to as **spreads**. Our initial approach might simply involve subtracting the prices and observing whether the difference deviates significantly from zero, taking their scale difference into account.
 
@@ -224,7 +225,6 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can use the model to produce the spreads, which will then be sent to the dashboard, as illustrated in the diagram.
 
 ![Arch-bottom](resources/general-architecture-rpt.png)
-*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 The first step in implementing this component is to retrieve the most cointegrated pair and its associated model. As we did before, we use IPC to communicate with the MS component:
 ```q
@@ -249,6 +249,8 @@ Now we need to notify the KX Dashboard about the spreads. The dashboard subscrib
 \t 16
 ```
 As shown, we wrap this publication as part of a `.z.ts` function. This function is special because it can invoked automatically by setting a value for `\t`. In this case, we instruct kdb to publish the last seen spread from `d` every 16 ms. Why 16 ms? Because this allows the dashboard to update at a rate of ~60 frames per second, as illustrated in the [Streaming section](https://code.kx.com/dashboards/datasources/#streaming) from the KX Dashboard documentation.
+
+> 📚 We highly recommend reading [Building real-time tick subscribers](https://code.kx.com/q/wp/rt-tick/) by Nathan Perrem before building your own real-time components.
 
 By embracing this approach, it only remains to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
 
