@@ -104,6 +104,9 @@ We can proceed to create a function called `cof` to call our imported function f
 ```q
 cof:@[;1]co[<]::
 ```
+
+> 💡 This function definition doesn't explicitly reference its arguments, thanks to the way kdb+/q enables us to compose functions. This programming style, where function arguments are not named explicitly, is known as tacit programming or point-free style. In kdb+/q, tacit programming is especially powerful and concise, allowing us to create expressive and efficient code. By leveraging the language's capabilities for function composition and implicit argument passing, we can achieve elegant solutions like the one demonstrated.
+
 Next, we will get the prices involved in each pair and use the function above to produce the desired p-values:
 ```q
 pv:cof .'({x`close}')cls([]sym:ps)
