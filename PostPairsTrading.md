@@ -1,6 +1,6 @@
 # Efficiency in Duality: Real-Time Pairs Trading Using kdb+/q
 
-kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and libraries from the kdb ecosystem.
+kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and tools from the kdb ecosystems.
 
 In order to achieve this, we have outlined the following steps:
 * Identifying related indexes
@@ -270,17 +270,21 @@ As you can imagine, by taking advantage of the flexibility of the Tick architect
 
 ## Conclusion
 
-In this post, we have provided a comprehensive overview of the implementation of the Pairs Trading strategy in kdb+/q, contextualized within the Tick Architecture. Here are some key takeaways:
-* The Tick Architecture allows us to handle both historical and real-time data.
-* By leveraging historical data, we were able to easily identify cointegrated pairs, reusing libraries from the Python ecosystem via PyKX when needed.
-* q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
-* Integrating a real-time component and connecting it with a dashboard is simple and efficient.
+This post has demonstrated that implementing a simple Pairs Trading strategy in kdb+/q is straightforward.
 
-More broadly, while we couldn't delve into all the details in this post, we want to emphasize three key advantages of kdb+/q in this context. First, the platform's performance is remarkably impressive, easily accommodating hundreds or thousands of pairs simultaneously. Second, q code is highly concise and elegant, enabling us to implement all the diagram components in under 100 lines of code. Finally, the technology is extremely flexible, allowing us to seamlessly adapt to other implementations of Pairs Trading. All that said, running, maintaining, and extending this system is a genuine pleasure.
+The primary enabler of this simplicity is the Tick Architecture, a robust design pattern that allows us to handle historical and real-time data with ease. We observed this in action while retrieving HDB data through the MS to calculate the spread models, and while subscribing the RPT to the TP to get the most up-to-date ticks. As we have seen, IPC is at the heart of this architecture and is essential for integrating new components into the system.
 
-## Future Work
+Secondly, the kdb ecosystem provides excellent tools, such as KX Dashboard, which we utilized to produce several graphs, particularly emphasizing real-time visualizations. As a niche platform, kdb cannot compete with Python in terms of ecosystem variety. However, PyKX allows us to overcome this limitation by enabling interaction with the Python ecosystem. This opens up possibilities for leveraging libraries like statsmodels and seaborn, as demonstrated in our examples.
 
-One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pairs trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
+Last but not least, the concision and expressiveness of q is impressive. We only needed to extend the vanilla architecture with less than 40 lines of q code to implement the MS and RPT components. In our view, maintaining 40 lines of code is far preferable to maintaining 400 lines. While becoming proficient with this language takes time, you don't need to master it to start analyzing data. q-SQL is a great entry point for beginners.
+
+However, there are several other benefits of this landscape that we couldn't explore in this article.
+
+Namely, the performance of these technologies is superb, both in terms of speed and memory footprint. In fact, as stated by KX in one of the articles linked above, kdb+ supports a throughput of 35K ticks per second for a single node. If we scale the solution to several nodes, we should easily accommodate thousands of pairs in the system simultaneously. We leave scaling this solution up as future work.
+
+Additionally, one of the killer features of this platform is flexibility. We showed a bit of it while extending the architecture with our own components, but we could go further. For example, we could produce more accurate models by embracing the Kalman Filter to dynamically fit the coefficients of the linear regression. This would allow for real-time adjustments and provide a more accurate reflection of current market conditions. We could also delve deeper into the topic of window signals to provide a robust framework for effective trading strategies. Analyzing the complexity of integrating these changes, and more generally analyzing the evolvability of the system, is also left as future work.
+
+We hope you enjoyed reading this article! You can find the whole code associated with this article in [this repository](https://github.com/hablapps/pt). Please feel free to experiment with it and extend it in any way. Feedback is more than welcome!
 
 ## Acknowledgements
 
