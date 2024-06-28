@@ -1,6 +1,6 @@
 # Efficiency in Duality: Real-Time Pairs Trading Using kdb+/q
 
-kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and libraries from the kdb ecosystem.
+kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and tools from the kdb ecosystems.
 
 In order to achieve this, we have outlined the following steps:
 * Identifying related indexes
@@ -23,12 +23,14 @@ Before diving into this search for related pairs, let me introduce you the tick 
 
 ## What is the Tick Architecture?
 
-The tick architecture can be seen as a series of interconnected q processes designed to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the historical database (HDB) archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
+The tick architecture can be seen as a series of interconnected q processes commonly used to handle high-frequency trading data very efficiently. At its heart is the tickerplant (TP), a crucial component responsible for receiving and timestamping incoming data, then broadcasting it to other components such as the real-time database (RDB). The TP ensures that data is distributed in a timely manner, allowing for real-time analytics and decision-making. The RDB stores recent data for quick access, while the historical database (HDB) archives older data for long-term storage and analysis. Additionally, the feed handler plays a vital role by interfacing with external data sources, making sure that the TP receives accurate and up-to-date information. This architecture guarantees seamless data flow and rapid access to both real-time and historical data, making it ideal for high-frequency trading applications. In fact, this simple setup can process [large amounts of data in a very short time](https://kx.com/blog/what-makes-time-series-database-kdb-so-fast/) with a small memory footprint.
 
 ![Architecture](resources/general-architecture.png)
-*kdb tick architecture [diagram by Alexander Unterrainer](https://www.defconq.tech/docs/architecture/plain), extended by us.*
+*kdb tick architecture [diagram by Alexander Unterrainer](https://www.defconq.tech/docs/architecture/plain), extended by us for this scenario.*
 
-To develop the pairs trading strategy, we have integrated several new components into the default vanilla architecture. These include the Model Server (MS), Real-time Pair Trading (RPT), and KX Dashboard, which will be introduced as needed. Now, let's begin our journey with the first step: identifying the most suitable pairs.
+To develop the pairs trading strategy, we have integrated several new components into the default vanilla architecture. These include the Model Server (MS), Real-time Pairs Trading (RPT), and KX Dashboard, which will be introduced as needed. Now, let's begin our journey with the first step: identifying the most suitable pairs.
+
+> 📚 If you are still curious about this topic, you can check out the new [kdb+ architecture course](https://learninghub.kx.com/courses/kdb-architecture/) at the KX Academy by Michaela Woods. If you want to go down to the metal, Alexander Unterrainer does an excellent job dissecting all the components, line by line, in his [KDB Tick Explained](https://www.defconq.tech/docs/tutorials/tick) series.
 
 ## Identifying cointegrated indexes
 
@@ -52,7 +54,7 @@ If our objective is to analyze potential pairs for the strategy using index data
 ```q
 rs:{select close by sym from stock where date within(.z.d-x;.z.d)}
 ```
-As you can see, the query resembles SQL: _select closing price by symbol from the stock table where the date is in the range between today and x days ago_. Indeed, we are taking advantage of the q-SQL syntactic facilities, which enable newcomers to be productive quickly, as evidenced by the [KX Academy](https://learninghub.kx.com/courses/kdb-developer-level-1/). It is worth mentioning that the query is enclosed in curly brackets, indicating that it is actually a function taking `x` as a parameter. The function is named `rs` to signify that it (r)eads (s)tocks.
+As you can see, the query resembles SQL: _select closing price by symbol from the stock table where the date is in the range between x days ago and today_. Indeed, we are taking advantage of the q-SQL syntactic facilities, which enable newcomers to be productive quickly, as evidenced by the [KX Academy](https://learninghub.kx.com/courses/kdb-developer-level-1/). It is worth mentioning that the query is enclosed in curly brackets, indicating that it is actually a function taking `x` as a parameter. The function is named `rs` to signify that it (r)eads (s)tocks.
 
 > 💡 Using short names for variables is a standard convention that, once you get used to it, improves readability.
 
@@ -61,7 +63,7 @@ Now that we have defined a query, we need to execute it on the HDB component. To
 hdb:`$":",.z.x 0
 cls:hdb(rs;2*365)
 ```
-The first line reads the first value from the command line argument, where the HDB port is expected, and then produces the symbol ::PORT, which refers to localhost at the given PORT. Finally, we supply the rs query along with its argument to define the range (two years ago from now) and assign the result generated by HDB to the `cls` variable:
+The first line reads the first value from the command line argument, where the HDB port is expected, and then produces the symbol `::PORT`, which refers to _localhost_ at the given _PORT_. Then, we supply the `rs` query along with its argument to define the range (two years ago from now), send them to HDB and assign the result generated by it to the `cls` variable:
 ```
 sym      | close                                                             ..
 ---------| ------------------------------------------------------------------..
@@ -86,21 +88,19 @@ ps:sx where (<).' sx:syms cross syms
 ```
 The first line extracts the sym column from the table. The second line generates their Cartesian product (`cross`) and filters out duplicate and inverse pairs by selecting only those pairs `where` the first element is alphabetically less than the second, ensuring each combination is unique. We are now ready to start analysing the cointegration of our pairs.
 
-To assess the level of cointegration between our chosen pair of assets, we'll employ a statistical test. This test will help us quantify the strength of the long-term equilibrium relationship we're looking for in our pairs trading strategy.
+To assess the level of cointegration between our chosen pair of assets, we'll employ a statistical test. This test will help us quantify the strength of the long-term equilibrium relationship we're looking for in our pairs trading strategy. The cointegration test is a **hypothesis test**, where we use our data to evaluate a specific hypothesis. In this case, our null hypothesis is that the two time series are not cointegrated. To interpret the results of this test, we'll be focusing on **p-values**.
 
-The cointegration test is a **hypothesis test**, where we use our data to evaluate a specific hypothesis. In this case, our null hypothesis is that the two time series are not cointegrated. To interpret the results of this test, we'll be focusing on **p-values**.
-
-**P-values** help us decide whether to reject the null hypothesis. If the p-value is low, it suggests that we can reject the hypothesis of no cointegration, indicating that our assets are likely cointegrated. The lower the p-value, the stronger the evidence for cointegration. Conventionally, a threshold of 0.05 is often used for the p-value to reject the null hypothesis.
+P-values help us decide whether to reject the null hypothesis. If the p-value is low, it suggests that we can reject the hypothesis of no cointegration, indicating that our assets are likely cointegrated. The lower the p-value, the stronger the evidence for cointegration. Conventionally, a threshold of 0.05 is often used for the p-value to reject the null hypothesis.
 
 For the sake of simplicity, we will be using [PyKX](https://code.kx.com/pykx/2.4/index.html). This is necessary as we require importing our cointegration test function and plotting a heatmap of our results. Developing these functionalities directly in q would be time-consuming and prone to errors. Although an implementation of the cointegration test in kdb+/q would be more efficient and faster, the effort required would outweigh the benefits for this particular case where performance isn't critical. Therefore, we rely on PyKX to streamline the process by leveraging relevant libraries from the Python ecosystem.
 ```q
 system"l pykx.q"
 ```
-One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the **statsmodels** package, the **statsmodels.tsa.stattools** module features **the Cointegration test**.
+One such library is **statsmodels**, a prominent tool in Python for statistical modeling and hypothesis testing. It equips analysts with a robust toolkit for regression, time series, and multivariate analysis. Specifically, within the statsmodels package, the _statsmodels.tsa.stattools_ module features the Cointegration test.
 ```q
 co:.pykx.import[`statsmodels.tsa.stattools]`:coint
 ```
-We can proceed to create a function called `cof` to call our imported function from PyKX and return the second element from the resulting list, which in this case is the p-value.
+We can proceed to create a function called `cof` to call our imported function from PyKX and return the second element from the resulting list, which in this case is the p-value, [as described in the official documentation](https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.coint.html).
 ```q
 cof:@[;1]co[<]::
 ```
@@ -110,7 +110,7 @@ pv:cof .'({x`close}')cls([]sym:ps)
 ```
 The implementation details are not as important as illustrating the concision and terseness achieved when developing code in q.
 
-Now, with our p-values in hand, let's show another example of the virtues of PyKX by plotting a heatmap using the _seaborn_ library:
+Now, with our p-values in hand, let's show another example of the virtues of PyKX by plotting a heatmap, using the _seaborn_ library:
 ```q
 pyhm:.pykx.import[`seaborn]`:heatmap
 mx:flip("f"$1,'not null reverse m),'m:(0,sums[reverse 1_til count[syms]])_ pv
@@ -118,7 +118,7 @@ pyhm[mx;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
 pysh:.pykx.import[`matplotlib.pyplot]`:show
 pysh[::]
 ```
-After importing the library utility and arranging the p-values into a matrix `mx`, we produce the heatmap and show it:
+After importing the library utility and arranging the p-values into a matrix `mx` (filled with dummy values in the top right) we produce the heatmap and show it:
 
 ![ADF heatmap](/resources/heatmap.png)
 
@@ -128,9 +128,9 @@ We will draw our attention to the synergy between _FCHI_ and _GDAXI_. They exhib
 
 The plotted graph displays the prices of both indexes together, providing a clearer comparison that showcases the cointegration between them. The blue and green lines represent GDAXI and FCHI, respectively. The close alignment of their price movements indicates that they are cointegrated to some extent. This means that, despite short-term deviations, the indexes tend to move together over time, maintaining a stable relationship. This graph was generated by [KX Dashboard](https://code.kx.com/dashboards/), which receives data from the Pairs Trading process and renders visualizations; we'll use this tool again later on.
 
-As mentioned earlier, the market is inherently random and doesn't always behave predictably. While FCHI and GDAXI often follow similar trends, their individual values **can sometimes diverge significantly**. For instance, FCHI may rise while GDAXI falls, or vice versa. However, this presents **an opportunity for profit** because we know that these assets tend to revert to their shared mean over time. If one asset is **overpriced** and likely to decrease, we may consider **selling it** (going short). Conversely, if an asset is **underpriced** and expected to increase, we may consider **buying it** (going long). That is actually the essence of Pair Trading.
+As mentioned earlier, the market is inherently random and doesn't always behave predictably. While FCHI and GDAXI often follow similar trends, their individual values can sometimes diverge significantly. For instance, FCHI may rise while GDAXI falls, or vice versa. However, this presents **an opportunity for profit** because we know that these assets tend to revert to their shared mean over time. If one asset is _overpriced_ and likely to decrease, we may consider selling it (going short). Conversely, if an asset is _underpriced_ and expected to increase, we may consider buying it (going long). That is actually the essence of Pairs Trading.
 
-> 💡 This strategy possesses financial characteristics: our **profitability remains unaffected by the broader market trends**, as our focus lies solely on the disparity between the two assets. It's about relative movements rather than absolute ones; we're indifferent to whether prices are rising or falling. This quality defines it as a **neutral market strategy**.
+> 💡 This strategy possesses financial characteristics: our _profitability remains unaffected by the broader market trends_, as our focus lies solely on the disparity between the two assets. It's about relative movements rather than absolute ones; we're indifferent to whether prices are rising or falling. This quality defines it as a neutral market strategy.
 
 As you might guess, our next task is to build the model that helps us determine whether an index is actually overpriced or underpriced.
 
@@ -139,7 +139,6 @@ As you might guess, our next task is to build the model that helps us determine 
 Having identified the optimal pair of indices for our pairs trading strategy, let's now explore how to deploy a simple model that detects trading opportunities. Additionally, we'll examine how all of this fits within the MS (Model Server) component.
 
 ![Arch-ML](resources/general-architecture-ms.png)
-*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 At this point, we can start coding the actual pairs trading model that calculates the relationships between the prices of our indexes, which we'll refer to as **spreads**. Our initial approach might simply involve subtracting the prices and observing whether the difference deviates significantly from zero, taking their scale difference into account.
 
@@ -226,10 +225,9 @@ This precisely meets one of our objectives: getting **a comprehensive method for
 
 ## Real-time spread calculation
 
-Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can use the model to produce the spreads, which will then be sent to the dashboard.
+Now that we have selected a pair of cointegrated indexes and built a model to calculate their relationships, it's time to formalize its subscription as a real-time component. Once we start receiving data from the TP, we can use the model to produce the spreads, which will then be sent to the dashboard, as illustrated in the diagram.
 
 ![Arch-bottom](resources/general-architecture-rpt.png)
-*kdb tick architecture diagram by Alexander Unterrainer, modified by us.*
 
 The first step in implementing this component is to retrieve the most cointegrated pair and its associated model. As we did before, we use IPC to communicate with the MS component:
 ```q
@@ -246,20 +244,22 @@ As usual, we assume that `tp` is a pointer to the TP process. Essentially, `.u.s
 d:ix!2#0f
 upd:{d^:exec sym!log(ask+bid)%2 from select by sym from y}
 ```
-Our `upd` function takes ticks as input, selects the most recent one for each symbol, calculates their mid price, and updates the values (if any) in a simple dictionary `d`. This dictionary acts as a cache, which becomes essential in the following and final step.
+Our `upd` function takes ticks as input (`y`), selects the most recent one for each symbol, calculates their mid price, and updates the values (if any) in a simple dictionary `d`. This dictionary acts as a cache, which becomes essential in the following and final step.
 
-Now we need to notify the KX Dashboard about the spreads. The dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (.u.sub). However, in this case, the dashboard makes this task automatic and transparent to the user by invoking this function once a component has selected the `spread` table from the RPT process as its data source. With this setup, we can publish events to our subscribers using `.u.pub`:
+Now we need to notify the KX Dashboard about the spreads. The dashboard subscribes to the RPT using the same interface that the RPT uses to subscribe to the TP (.u.sub). However, in this case, the dashboard makes this task automatic and transparent to the user by invoking this function once a dashboard element has selected the `spread` table from the RPT process as its data source. With this setup, we can publish events to our subscribers using `.u.pub`:
 ```q
 .z.ts:{.u.pub[`spread;([]time:1#.z.N;spread:sp . d ix)]}
 \t 16
 ```
 As shown, we wrap this publication as part of a `.z.ts` function. This function is special because it can invoked automatically by setting a value for `\t`. In this case, we instruct kdb to publish the last seen spread from `d` every 16 ms. Why 16 ms? Because this allows the dashboard to update at a rate of ~60 frames per second, as illustrated in the [Streaming section](https://code.kx.com/dashboards/datasources/#streaming) from the KX Dashboard documentation.
 
-By using this approach, it only remains to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
+> 📚 We highly recommend reading [Building real-time tick subscribers](https://code.kx.com/q/wp/rt-tick/) by Nathan Perrem before building your own real-time components.
+
+By embracing this approach, it only remains to connect KX Dashboards to our publisher by setting up a new connection from the connection selector in the UI. This will allow us to plot our spreads in real time and we will end up with something like this:
 
 ![SpreadsD](resources/spreads.gif)
 
-And there we have it! **A perfectly plotted spread series in real-time**, ready to be utilized for further analysis and exploitation.
+And there we have it! A perfectly plotted spread series in real-time, ready to be utilized for further analysis and exploitation.
 
 Up until this point in this section, we have taken a look at how we, having previously identified a pair of compatible assets, could reliably calculate a meaningful spread and implemented it in a simulated real-time scenario. Thanks to KX Dashboards we were also able to create a simple plot to show all this information in a way that's easily understandable.
 
@@ -275,17 +275,21 @@ As you can imagine, by taking advantage of the flexibility of the Tick architect
 
 ## Conclusion
 
-In this post, we have provided a comprehensive overview of the implementation of the Pairs Trading strategy in kdb+/q, contextualized within the Tick Architecture. Here are some key takeaways:
-* The Tick Architecture allows us to handle both historical and real-time data.
-* By leveraging historical data, we were able to easily identify cointegrated pairs, reusing libraries from the Python ecosystem via PyKX when needed.
-* q is very expressive and the implementation of the Linear Regression logic for producing the spread model is straightforward.
-* Integrating a real-time component and connecting it with a dashboard is simple and efficient.
+This post has demonstrated that implementing a simple Pairs Trading strategy in kdb+/q is straightforward.
 
-More broadly, while we couldn't delve into all the details in this post, we want to emphasize three key advantages of kdb+/q in this context. First, the platform's performance is remarkably impressive, easily accommodating hundreds or thousands of pairs simultaneously. Second, q code is highly concise and elegant, enabling us to implement all the diagram components in under 100 lines of code. Finally, the technology is extremely flexible, allowing us to seamlessly adapt to other implementations of Pairs Trading. All that said, running, maintaining, and extending this system is a genuine pleasure.
+The primary enabler of this simplicity is the Tick Architecture, a robust design pattern that allows us to handle historical and real-time data with ease. We observed this in action while retrieving HDB data through the MS to calculate the spread models, and while subscribing the RPT to the TP to get the most up-to-date ticks. As we have seen, IPC is at the heart of this architecture and is essential for integrating new components into the system.
 
-## Future Work
+Secondly, the kdb ecosystem provides excellent tools, such as KX Dashboard, which we utilized to produce several graphs, particularly emphasizing real-time visualizations. As a niche platform, kdb cannot compete with Python in terms of ecosystem variety. However, PyKX allows us to overcome this limitation by enabling interaction with the Python ecosystem. This opens up possibilities for leveraging libraries like statsmodels and seaborn, as demonstrated in our examples.
 
-One valid concern is that our calculations might be heavily influenced by past data and rely too much on historical changes that may not accurately reflect the present reality. To address this, we could implement a rolling window approach where the linear regression is continuously updated, ensuring our model remains responsive to changes in the underlying data over time. Additionally, using the Kalman Filter to dynamically fit the alpha and beta of the linear regression can effectively filter noise and predict states in a dynamic system, allowing for real-time adjustments and providing a more accurate reflection of current market conditions. We will delve deeper into the topic of window signals as well, exploring more advanced techniques and their applications in real-time pairs trading. This will further enhance our model's responsiveness and accuracy, providing a robust framework for effective trading strategies.
+Last but not least, the concision and expressiveness of q is impressive. We only needed to extend the vanilla architecture with less than 40 lines of q code to implement the MS and RPT components. In our view, maintaining 40 lines of code is far preferable to maintaining 400 lines. While becoming proficient with this language takes time, you don't need to master it to start analyzing data. q-SQL is a great entry point for beginners.
+
+However, there are several other benefits of this landscape that we couldn't explore in this article.
+
+Namely, the performance of these technologies is superb, both in terms of speed and memory footprint. In fact, as stated by KX in one of the articles linked above, kdb+ supports a throughput of 35K ticks per second for a single node. If we scale the solution to several nodes, we should easily accommodate thousands of pairs in the system simultaneously. We leave scaling this solution up as future work.
+
+Additionally, one of the killer features of this platform is flexibility. We showed a bit of it while extending the architecture with our own components, but we could go further. For example, we could produce more accurate models by embracing the Kalman Filter to dynamically fit the coefficients of the linear regression. This would allow for real-time adjustments and provide a more accurate reflection of current market conditions. We could also delve deeper into the topic of window signals to provide a robust framework for effective trading strategies. Analyzing the complexity of integrating these changes, and more generally analyzing the evolvability of the system, is also left as future work.
+
+We hope you enjoyed reading this article! You can find the whole code associated with this article in [this repository](https://github.com/hablapps/pt). Please feel free to experiment with it and extend it in any way. Feedback is more than welcome!
 
 ## Acknowledgements
 
