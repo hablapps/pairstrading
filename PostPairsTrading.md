@@ -1,8 +1,8 @@
-# Efficiency in Duality: Real-Time Pairs Trading Using kdb+/q
+# Pairs Trading in KDB+ using Tick Architecture in 25 lines
 
-kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and tools from the kdb ecosystems.
+Kdb+/q stands out as **a powerful tool in finance**, renowned for its ability to handle vast volumes of real-time data amidst the relentless dynamics of the market. In this article, we embark on an insightful exploration of [_Pairs Trading_](https://en.wikipedia.org/wiki/Pairs_trade), one of the most popular strategies in the trading world, and its implementation in q. Our primary goal is to demonstrate how straightforward it is to create a simple real-time implementation of this strategy in just 25 lines of code. We accomplish this by leveraging the language's conciseness and expressiveness, along with reusing typical patterns and tools from the kdb ecosystems.
 
-In order to achieve this, we have outlined the following steps:
+In order to achieve this, we have outlined the following steps, corresponding to the main sections of this article:
 * Identifying related indexes
 * Implementing a model to calculate their spreads
 * Visualizing the approach in real-time
@@ -278,7 +278,7 @@ The primary enabler of this simplicity is the Tick Architecture, a robust design
 
 Secondly, the kdb ecosystem provides excellent tools, such as KX Dashboard, which we utilized to produce several graphs, particularly emphasizing real-time visualizations. As a niche platform, kdb cannot compete with Python in terms of ecosystem variety. However, PyKX allows us to overcome this limitation by enabling interaction with the Python ecosystem. This opens up possibilities for leveraging libraries like statsmodels and seaborn, as demonstrated in our examples.
 
-Last but not least, the concision and expressiveness of q is impressive. We only needed to extend the vanilla architecture with less than 40 lines of q code to implement the MS and RPT components. In our view, maintaining 40 lines of code is far preferable to maintaining 400 lines. While becoming proficient with this language takes time, you don't need to master it to start analyzing data. q-SQL is a great entry point for beginners.
+Last but not least, the concision and expressiveness of q is impressive. We only needed to extend the vanilla architecture with less than 25 lines of q code (skipping blank lines) to implement the [MS](https://github.com/hablapps/pt/blob/main/ms.q) and [RPT](https://github.com/hablapps/pt/blob/main/tick/rpt.q) components. In our view, maintaining 40 lines of code is far preferable to maintaining 250 lines. If you explore the [pt repo](https://github.com/hablapps/pt), you will see that beyond these components, it extends the [kdb+tick vanilla setup](https://github.com/KxSystems/kdb-tick) with a feed handler and an historical database process. These are just dummy plumbing components to help you reproduce the results. Finally, while becoming proficient with this language takes time, you don't need to master it to start analyzing data. q-SQL is a great entry point for beginners.
 
 However, there are several other benefits of this landscape that we couldn't explore in this article.
 
@@ -286,7 +286,7 @@ Namely, the performance of these technologies is superb, both in terms of speed 
 
 Additionally, one of the killer features of this platform is flexibility. We showed a bit of it while extending the architecture with our own components, but we could go further. For example, we could produce more accurate models by embracing the Kalman Filter to dynamically fit the coefficients of the linear regression. This would allow for real-time adjustments and provide a more accurate reflection of current market conditions. We could also delve deeper into the topic of window signals to provide a robust framework for effective trading strategies. Analyzing the complexity of integrating these changes, and more generally analyzing the evolvability of the system, is also left as future work.
 
-We hope you enjoyed reading this article! You can find the whole code associated with this article in [this repository](https://github.com/hablapps/pt). Please feel free to experiment with it and extend it in any way. Feedback is more than welcome!
+We hope you enjoyed reading this article! Please feel free to experiment with the repo and extend it in any way. Feedback is more than welcome!
 
 ## Acknowledgements
 
@@ -297,9 +297,12 @@ We wish to express our sincere gratitude to Álvaro Sánchez-Paniagua Ríos for 
 For the technical implementation, we relied on:
 
 * Kx Documentation: https://code.kx.com/q/ref/
-* Q for mortals: https://code.kx.com/q4m3/
 * PyKX Documentation: https://code.kx.com/pykx/2.4/index.html
+* KDB Tick Explained: https://www.defconq.tech/docs/tutorials/tick
+* kdb+ architecture: https://learninghub.kx.com/courses/kdb-architecture/
 * statsmodels Documentation: https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.coint.html
+* q201: https://q201.org
+* Q for mortals: https://code.kx.com/q4m3/
 
 For the financial implementation, we used:
 
@@ -308,4 +311,11 @@ For the financial implementation, we used:
 For the data gathering, we used:
 * Yahoo Finance API: https://github.com/ranaroussi/yfinance
 * Tickstory: https://tickstory.com/
+
+## Other articles by Habla you might find interesting
+
+* [Exploring KX Dashboards](https://www.habla.dev/blog/2023/10/03/Exploring-KX-Dashboards.html)
+* [All Roads Lead to PyKX](https://www.habla.dev/blog/2023/07/31/all-roads-lead-to-pykx.html)
+* [All Roads Lead to Kdb: Technical Counterpart](https://www.habla.dev/blog/2023/09/15/all-roads-lead-to-kdb-the-technical-counterpart)
+* [Contributing to PyKX](https://www.habla.dev/blog/2024/04/10/Contributing-to-PyKX.html)
 
