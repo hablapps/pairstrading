@@ -42,7 +42,7 @@ The concept we're referring to is **cointegration** (although there are other me
 
 Hence, we're interested in **cointegrated assets**, which are assets that exhibit the following characteristics:
 * They have a similar trend, meaning the difference between both assets maintains a constant mean, and this difference fluctuates around that same mean.
-* This inherent relationship persists in the long run, meaning that our series is not dependent on time.
+* This inherent relationship remains constant in the long run, indicating that the connection between the series is time-invariant.
 
 Let's shift our focus to the MS component, which has several responsibilities. In this section, we'll concentrate on its first task: reading data from the HDB and calculating the degree of cointegration among existing pairs. This step is crucial as it lays the foundation for subsequent actions in the strategy. How should we go about implementing this process?
 
@@ -189,7 +189,10 @@ q)spreads: log[price_y] - alpha + log[price_x] * beta
 To find the best relationship between our pair of assets in a pairs trading strategy, we need to determine the optimal values of alpha and beta that minimize the spread. In mathematical terms, we're looking for the line that best fits the prices. The most common approach to this problem is the least squares method, let's see how can we approach this problem.
 
 Firstly, we can rewrite the linear regression equation as a matrix product:
-$$ Y = (\alpha, \beta)\begin{pmatrix}1 \\ X\end{pmatrix}$$
+
+```math
+Y = (\alpha, \beta)\begin{pmatrix}1 \\ X\end{pmatrix}
+```
 
 Where α represents the intercept and β the slope of our regression line $Y = α + βX$.
 
