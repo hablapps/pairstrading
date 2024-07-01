@@ -169,11 +169,11 @@ q)spreads: log[price_y] - log price_x
 1.526056 1.098612 1.272966 2.014903 1.475907
 ```
 
-We're making progress, as we observe **numbers now fluctuating within much smaller ranges**. However, we're still missing a clear understanding of the underlying relationship. While we've normalized the data using logarithms, we now need to align their discrepancies to a single asset. 
-
-Since both assets are related, **we can leverage linear regression** to our advantage. This enables us to simplify our spreads effectively. So, we'll conduct a basic linear regression analysis using historical data to discern the disparity between them. The generic formulae for one is:
+As we progress in our analysis, we're now seeing **numbers fluctuate within much smaller ranges**, thanks to our logarithmic normalization. However, to fully capitalize on the relationship between our assets, we need to align their discrepancies. This is where **linear regression** becomes a powerful tool in our algorithmic trading arsenal. By applying linear regression, we can find the optimal parameters α (alpha) and β (beta) that minimize the variance of the spread between our assets. This reduced variance is a crucial property for an algorithmic trading strategy, as it indicates a more stable and predictable relationship between the assets. The generic formula for our linear regression is:
 
 $$Y = \alpha + \beta X + \varepsilon$$
+
+Where ε represents the spread, whose variance we aim to minimize. By finding the α and β that best fit this equation, we're essentially identifying the most consistent relationship between our assets. This consistency is invaluable in algorithmic trading, as it can lead to more reliable trading signals and potentially lower risk. The resulting spread, with its minimized variance, becomes a key indicator for our trading decisions, allowing us to exploit even small deviations from this optimized relationship.
 
 In this context, Y represents the FCHI index, X represents the GDAXI index, α is the intercept, β is the slope (which indicates the relationship strength between the two indexes), and ε is the error term. We illustrate it in the next graph:
 
@@ -268,7 +268,15 @@ And there we have it! A perfectly plotted spread series in real-time, ready to b
 
 Up until this point in this section, we have taken a look at how we, having previously identified a pair of compatible assets, could reliably calculate a meaningful spread and implemented it in a simulated real-time scenario. Thanks to KX Dashboards we were also able to create a simple plot to show all this information in a way that's easily understandable.
 
-To finish, once we have our spreads accurately calculated and observe how our data is being updated we can **execute buy and sell orders when spread discrepancies occur** based on some signal windows. A simple approach to window signals is to set these windows as twice the historical standard deviation of the spreads. Therefore, if either of these limits is reached, we should sell the overvalued index and buy the undervalued one, and then unwind our position when the spread returns to 0. Let's clarify this with a specific example:
+To finish, once we have our spreads accurately calculated and observe how our data is being updated, we'll convert these spreads into **z-scores** for more effective **signal generation**. This conversion allows us to execute buy and sell orders when significant spread discrepancies occur, based on standardized signal windows. To implement this, we first fit the **mean and standard deviation** of our historical spreads. The z-score of a spread is then calculated as its distance from the mean in terms of standard deviations, providing a consistent framework for identifying trading opportunities across different pairs.
+
+```math
+z_t = \frac{\epsilon_t - \mu_x}{\sigma_x}
+```
+
+We'll use z-score thresholds of -1.96 and 1.96 as our trading signals. These values correspond to the 95% confidence interval in a normal distribution. When the z-score exceeds 1.96, we'll sell the overvalued asset and buy the undervalued one. Conversely, when it falls below -1.96, we'll do the opposite. We'll unwind positions as the z-score returns to 0.
+
+This approach allows us to identify and trade on significant deviations in the relationship between our paired assets, with the expectation that these deviations will eventually revert to the mean. Let's clarify this with a specific example:
 
 ![WSignals](resources/window_signals.gif)
 
