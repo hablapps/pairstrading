@@ -32,15 +32,18 @@ rs:{([]sym:x;close:first((5#" "),"F";csv) 0:`$":data/stocks/",string[x],".csv")}
 t: `sym xgroup raze rs each syms
 
 // We apply our cointegration function on every pair of symbols form our crossedList
-matrix: fcoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')syms cross syms
+u:ps where (<).' ps:syms cross syms
+matrix: fcoint .' 0f^neg[trange]#''@\:[;`close](@/:[t]')u
 
 // We create a p-values matrix from the ADF test results and set values above the diagonal to 1
-pvalues: ones (count[syms]*til count syms)_matrix 
+pvalues: m,'not null reverse m:-1 rotate sums[til count[syms]] _ reverse matrix
+
+show pvalues
 
 
 pyhm:.pykx.import[`seaborn]`:heatmap
 
-pyhm[pvalues;`xticklabels pykw syms;`yticklabels pykw syms;`cmap pykw `RdYlGn_r]
+pyhm[pvalues;`xticklabels pykw reverse syms;`yticklabels pykw reverse syms;`cmap pykw `RdYlGn_r]
 
 pyshow:.pykx.import[`matplotlib.pyplot]`:show
 
